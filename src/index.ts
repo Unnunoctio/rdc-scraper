@@ -32,8 +32,8 @@ const scraping = async (): Promise<void> => {
   }
 }
 
-// Scraping a las 8 am
-schedule.scheduleJob('0 8 * * *', scraping)
+// Scraping a las 8 am en chile
+schedule.scheduleJob('0 11 * * *', scraping)
 
-// Scraping a las 2 pm
-schedule.scheduleJob('0 14 * * *', scraping)
+// Scraping a las 2 pm en chile
+schedule.scheduleJob('0 17 * * *', scraping)
