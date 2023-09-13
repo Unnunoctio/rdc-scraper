@@ -1,12 +1,9 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
-import dotenv from 'dotenv'
+import 'dotenv/config.js'
 import mongoose from 'mongoose'
 import cron from 'node-cron'
 import { getNewProductUnits } from './utils/utilsAPI.js'
 import { JumboSpider, SantaSpider } from './spiders/index.js'
-
-// Configure dotenv
-dotenv.config()
 
 // Configure mongoose
 mongoose.connect(process.env.DB_URI as string)
