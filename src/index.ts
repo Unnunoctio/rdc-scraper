@@ -10,9 +10,10 @@ mongoose.connect(process.env.DB_URI as string)
   .then(() => console.log('Database connected'))
   .catch((err) => console.log(err))
 
-const scraping = (): void => {
+const scraping = async (): Promise<void> => {
   console.log('Starting scraping...')
   console.log('Finally scraping.')
 }
 
+// eslint-disable-next-line @typescript-eslint/no-misused-promises
 cron.schedule('* * * * *', scraping)
