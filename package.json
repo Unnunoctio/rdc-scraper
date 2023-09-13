@@ -10,13 +10,13 @@
     "axios": "1.5.0",
     "dotenv": "16.3.1",
     "mongoose": "7.5.1",
-    "node-cron": "3.0.2"
+    "node-cron": "3.0.2",
+    "typescript": "5.2.2"
   },
   "devDependencies": {
     "@types/node": "20.6.0",
     "@types/node-cron": "3.0.8",
-    "ts-standard": "12.0.2",
-    "typescript": "5.2.2"
+    "ts-standard": "12.0.2"
   },
   "eslintConfig": {
     "parserOptions": {
