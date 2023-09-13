@@ -28,7 +28,7 @@ export const getNewProductUnits = async (): Promise<void> => {
 
     await ProductUnitModel.insertMany(newProducts.filter(product => product !== undefined))
   } catch (error) {
-    console.error(error.message)
+    console.error(error)
   }
 }
 
@@ -38,7 +38,7 @@ export const isBrandExist = async (brand: string): Promise<boolean> => {
     return productsCount > 0
   } catch (error) {
     console.log(brand)
-    console.error(error.message)
+    console.error(error)
     return false
   }
 }
@@ -68,7 +68,7 @@ export const getDrink = async (title: string, brand: string, content: number, pa
 
     return productCorrect
   } catch (error) {
-    console.error(error.message)
+    console.error(error)
     return null
   }
 }
