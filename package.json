@@ -1,7 +1,6 @@
 {
   "name": "rdc-scraper",
   "version": "1.0.0",
-  "type": "module",
   "main": "index.js",
   "author": "Rafael Carvacho",
   "license": "MIT",
@@ -10,12 +9,11 @@
     "axios": "1.5.0",
     "dotenv": "16.3.1",
     "mongoose": "7.5.1",
-    "node-cron": "3.0.2",
-    "typescript": "5.2.2"
+    "node-schedule": "2.1.1"
   },
   "devDependencies": {
-    "@types/node": "20.6.0",
-    "@types/node-cron": "3.0.8",
+    "@types/node-schedule": "^2.1.0",
+    "typescript": "5.2.2",
     "ts-standard": "12.0.2"
   },
   "eslintConfig": {
@@ -26,11 +24,8 @@
       "./node_modules/ts-standard/eslintrc.json"
     ]
   },
-  "engines": {
-    "node": ">=14.20.1"
-  },
   "scripts": {
-    "compile": "tsc",
-    "start": "npm run compile && node ./dist/index.js"
+    "build": "npx tsc",
+    "start": "node src/index.js"
   }
 }

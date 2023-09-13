@@ -23,7 +23,7 @@ export const isProductExist = async (urlWebsite: string): Promise<boolean> => {
     if (product === null) return false
     return true
   } catch (error) {
-    console.error(error.message)
+    console.error(error)
     return false
   }
 }
@@ -45,7 +45,7 @@ export const addProduct = async (website: Website, product: ProductScraper): Pro
       return true
     }
   } catch (error) {
-    console.error(error.message)
+    console.error(error)
     return false
   }
 }
@@ -69,7 +69,7 @@ export const updateWebsite = async (updateWebsite: UpdateWebsite): Promise<boole
     if (product == null) return false
     return true
   } catch (error) {
-    console.error(error.message)
+    console.error(error)
     return false
   }
 }
@@ -96,7 +96,7 @@ export const deleteWithoutStock = async (websiteName: string, websiteWatch: numb
     )
     return true
   } catch (error) {
-    console.error(error.message)
+    console.error(error)
     return false
   }
 }

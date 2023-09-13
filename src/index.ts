@@ -1,9 +1,11 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
 import 'dotenv/config.js'
 import mongoose from 'mongoose'
-import cron from 'node-cron'
+import schedule from 'node-schedule'
 import { getNewProductUnits } from './utils/utilsAPI.js'
 import { JumboSpider, SantaSpider } from './spiders/index.js'
+
+console.log('Starting app...')
 
 // Configure mongoose
 mongoose.connect(process.env.DB_URI as string)
@@ -31,7 +33,7 @@ const scraping = async (): Promise<void> => {
 }
 
 // Scraping a las 8 am
-cron.schedule('0 8 * * *', scraping)
+schedule.scheduleJob('0 8 * * *', scraping)
 
 // Scraping a las 2 pm
-cron.schedule('0 14 * * *', scraping)
+schedule.scheduleJob('0 14 * * *', scraping)
