@@ -1,6 +1,6 @@
 import { ProductScraper, UpdateWebsite, Website } from '../types'
 import ProductModel from '../models/ProductModel.js'
-import { getDrink } from './utilsAPI'
+import { getDrink } from './utilsAPI.js'
 
 const getProductTitle = (name: string, packageData: string, content: number, quantity: number): string => {
   let title = ''

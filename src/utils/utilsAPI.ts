@@ -1,6 +1,6 @@
 import axios from 'axios'
 import { Drink, ProductUnit } from '../types'
-import ProductUnitModel from '../models/ProductUnitModel'
+import ProductUnitModel from '../models/ProductUnitModel.js'
 
 export const getNewProductUnits = async (): Promise<void> => {
   const pages = [`${process.env.DRINKS_API as string}&category=Cervezas`, `${process.env.DRINKS_API as string}&category=Destilados`, `${process.env.DRINKS_API as string}&category=Vinos`]
