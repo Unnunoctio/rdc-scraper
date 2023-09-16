@@ -33,7 +33,7 @@ export interface ProductScraper {
   category: string
   subCategory: string
   url: string
-  imageUrl?: string
+  images?: Images
   price?: number
   bestPrice?: number
   quantity?: number
@@ -85,10 +85,15 @@ export interface Website {
   watch: number
 }
 
+interface Images {
+  small: string
+  large: string
+}
+
 export interface Product extends Document {
   title: string
   quantity: number
-  image_url: string
+  images: Images
   product: ProductUnit
   websites: Types.DocumentArray<Website>
 }

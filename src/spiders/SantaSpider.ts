@@ -173,9 +173,16 @@ export class SantaSpider implements Spider {
   }
 
   getExtraProductData (productData: ProductScraper, product: SantaProduct): ProductScraper {
+    const link = product.items[0].images[0].imageUrl
+    const linkSplit = link.split('/')
+    const linkParsed = linkSplit.slice(0, -1).join('/')
+
     const extraData: ProductScraper = {
       ...productData,
-      imageUrl: product.items[0].images[0].imageUrl,
+      images: {
+        small: `${linkParsed}-280-280`,
+        large: `${linkParsed}-750-750`
+      },
       price: product.items[0].sellers[0].commertialOffer.PriceWithoutDiscount,
       bestPrice: product.items[0].sellers[0].commertialOffer.Price
     }

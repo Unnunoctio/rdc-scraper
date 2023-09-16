@@ -40,7 +40,7 @@ export const addProduct = async (website: Website, product: ProductScraper): Pro
       return true
     } else {
       const title = getProductTitle(drinkAPI.name, drinkAPI.package, drinkAPI.content, product.quantity as number)
-      const newProduct = new ProductModel({ title, product: drinkAPI, quantity: product.quantity, websites: [website], image_url: product.imageUrl })
+      const newProduct = new ProductModel({ title, product: drinkAPI, quantity: product.quantity, websites: [website], images: product.images })
       await newProduct.save()
       return true
     }

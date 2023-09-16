@@ -25,7 +25,9 @@
     ]
   },
   "scripts": {
+    "compile": "tsc",
     "build": "npx tsc",
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "dev": "npm run compile && node src/index.js"
   }
 }
