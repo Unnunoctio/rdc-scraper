@@ -4,7 +4,10 @@ import { Product } from '../types'
 const ProductSchema = new Schema<Product>({
   title: { type: String, required: true, unique: true },
   quantity: { type: Number, required: true },
-  image_url: { type: String, required: true, unique: true },
+  images: {
+    small: { type: String, required: true },
+    large: { type: String, required: true }
+  },
   product: {
     _id: { type: Schema.Types.ObjectId, required: true },
     name: { type: String, required: true },
