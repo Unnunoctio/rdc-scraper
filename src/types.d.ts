@@ -1,5 +1,19 @@
-import { Date } from 'mongoose'
+import { Date, Document } from 'mongoose'
 
+// BASE DE DATOS
+export interface DrinkDB extends Drink, Document {}
+
+export interface ImageDB extends Image, Document {}
+
+export interface InfoDB extends Info, Document {}
+
+export interface RecordDB extends Record, Document {}
+
+export interface WebsiteDB extends Website, Document {}
+
+export interface ProductDB extends Product, Document {}
+
+// INTERFACE
 export interface Drink {
   name: string
   brand: string
@@ -49,4 +63,29 @@ export interface Product {
   images: Image
   drink: Drink
   websites: Website[]
+}
+
+// SPIDER
+export interface Spider {
+  info: Info
+  headers: { [key: string]: string }
+  start_urls: string[]
+
+  run: () => Promise<Scraper[]>
+}
+
+export interface Scraper {
+  product_sku: any
+  title: string
+  brand: string
+  category: string
+  url: string
+  price: number
+  best_price: number
+  average?: number
+  images?: Image
+  alcoholic_grade?: number
+  content?: number
+  quantity?: number
+  package?: string
 }
