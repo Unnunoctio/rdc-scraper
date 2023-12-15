@@ -1,6 +1,6 @@
 import 'dotenv/config.js'
 import mongoose from 'mongoose'
-import { getDrinksApi } from './utils/drinksApi.js'
+import { runSpiders } from './spiders/index.js'
 
 console.log('Starting app...')
 
@@ -12,8 +12,7 @@ mongoose.connect(process.env.DB_URI as string)
 // Scraping function
 const scrape = async (): Promise<void> => {
   console.log('Scraping...')
-  const drinksApi = await getDrinksApi()
-  console.log(drinksApi)
+  await runSpiders()
 }
 
 scrape()
