@@ -1,0 +1,33 @@
+{
+  "name": "rdc-scraper",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "repository": "https://github.com/Unnunoctio/RDC-Scraper.git",
+  "author": "Rafael Carvacho",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "16.3.1",
+    "mongoose": "8.0.3"
+  },
+  "devDependencies": {
+    "ts-node": "10.9.2",
+    "ts-standard": "12.0.2",
+    "typescript": "5.3.3"
+  },
+  "eslintConfig": {
+    "parserOptions": {
+      "project": "./tsconfig.json"
+    },
+    "extends": [
+      "./node_modules/ts-standard/eslintrc.json"
+    ]
+  },
+  "engines": {
+    "node": ">=14.20.1"
+  },
+  "scripts": {
+    "compile": "tsc",
+    "start": "npm run compile && node ./dist/index.js"
+  }
+}
