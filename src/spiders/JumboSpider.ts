@@ -112,6 +112,8 @@ export class JumboSpider implements Spider {
       const average = averages?.find(a => a.id === scraped.product_sku)
       if (average !== undefined && average.totalCount !== 0) {
         return { ...scraped, average: average?.average }
+      } else if (average !== undefined && average.totalCount === 0) {
+        return { ...scraped, average: null }
       }
       return scraped
     })
