@@ -1,4 +1,4 @@
-import { Date, Document } from 'mongoose'
+import { Date, ObjectId, Document } from 'mongoose'
 
 // BASE DE DATOS
 export interface DrinkDB extends Drink, Document {}
@@ -47,22 +47,22 @@ export interface Record {
 }
 
 export interface Website {
-  info: Info
+  info: ObjectId
   path: string
   price: number
   best_price: number
-  average: number
+  average: number | null
   last_update: number
   in_stock: boolean
-  records: Record[]
+  records: ObjectId[]
 }
 
 export interface Product {
   sku: number
   quantity: number
-  images: Image
-  drink: Drink
-  websites: Website[]
+  images: ObjectId
+  drink: ObjectId
+  websites: ObjectId[]
 }
 
 // SPIDER
@@ -82,7 +82,7 @@ export interface Scraper {
   url: string
   price: number
   best_price: number
-  average?: number
+  average?: number | null
   images?: Image
   alcoholic_grade?: number
   content?: number
