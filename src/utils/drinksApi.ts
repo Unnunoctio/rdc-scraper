@@ -1,3 +1,4 @@
+import axios from 'axios'
 import { Drink } from '../types'
 
 export const getDrinksApi = async (): Promise<Drink[]> => {
@@ -6,8 +7,7 @@ export const getDrinksApi = async (): Promise<Drink[]> => {
 
   try {
     const drinks = await Promise.all(pages.map(async (page) => {
-      const res = await fetch(page)
-      const data = await res.json() as Drink[]
+      const { data } = await axios.get<Drink[]>(page)
       return data
     }))
 

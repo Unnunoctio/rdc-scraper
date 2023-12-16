@@ -1,3 +1,4 @@
+import axios from 'axios'
 import { Info, Scraper, Spider } from '../types'
 
 interface SantaResponse {
@@ -78,8 +79,7 @@ export class SantaSpider implements Spider {
 
     // Obtener todos los productos de todas las paginas
     const products = (await Promise.all(pages.map(async (url) => {
-      const res = await fetch(`${url}`, { headers: this.headers })
-      const data = await res.json() as SantaResponse
+      const { data } = await axios.get<SantaResponse>(`${url}`, { headers: this.headers })
       return data.products
     }))).flat()
 
@@ -125,8 +125,7 @@ export class SantaSpider implements Spider {
   }
 
   async getPages (url: string): Promise<string[]> {
-    const res = await fetch(`${url}?sc=1`, { headers: this.headers })
-    const data = await res.json() as SantaResponse
+    const { data } = await axios.get<SantaResponse>(`${url}?sc=1`, { headers: this.headers })
     const total = Math.ceil(data.recordsFiltered / 40)
 
     const pages: string[] = []
@@ -138,6 +137,7 @@ export class SantaSpider implements Spider {
 
   getMainData (product: SantaProduct): Scraper {
     const scraped: Scraper = {
+      website: this.info.name,
       product_sku: product.productId,
       title: product.productName,
       brand: product.brand,
@@ -256,8 +256,7 @@ export class SantaSpider implements Spider {
   async getAverages (products: Scraper[]): Promise<SantaAverage[] | undefined> {
     const skus = products.map((product) => product.product_sku).join(',')
     try {
-      const res = await fetch(`${this.average_url}?ids=${skus}`, { headers: this.headers })
-      const data = await res.json() as SantaAverage[]
+      const { data } = await axios.get<SantaAverage[]>(`${this.average_url}?ids=${skus}`, { headers: this.headers })
       return data
     } catch (error) {
       console.log('Error al obtener los averages')

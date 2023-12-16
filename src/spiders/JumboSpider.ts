@@ -1,3 +1,4 @@
+import axios from 'axios'
 import { Info, Scraper, Spider } from '../types'
 
 interface JumboResponse {
@@ -76,8 +77,7 @@ export class JumboSpider implements Spider {
 
     // Obtener todos los productos de todas las paginas
     const products = (await Promise.all(pages.map(async (url) => {
-      const res = await fetch(`${url}`, { headers: this.headers })
-      const data = await res.json() as JumboResponse
+      const { data } = await axios.get<JumboResponse>(`${url}`, { headers: this.headers })
       return data.products
     }))).flat()
 
@@ -123,8 +123,7 @@ export class JumboSpider implements Spider {
   }
 
   async getPages (url: string): Promise<string[]> {
-    const res = await fetch(`${url}?sc=11`, { headers: this.headers })
-    const data = await res.json() as JumboResponse
+    const { data } = await axios.get<JumboResponse>(`${url}?sc=11`, { headers: this.headers })
     const total = Math.ceil(data.recordsFiltered / 40)
 
     const pages: string[] = []
@@ -136,6 +135,7 @@ export class JumboSpider implements Spider {
 
   getMainData (product: JumboProduct): Scraper {
     const scraped: Scraper = {
+      website: this.info.name,
       product_sku: product.productId,
       title: product.productName,
       brand: product.brand,
@@ -254,8 +254,7 @@ export class JumboSpider implements Spider {
   async getAverages (products: Scraper[]): Promise<JumboAverage[] | undefined> {
     const skus = products.map((product) => product.product_sku).join(',')
     try {
-      const res = await fetch(`${this.average_url}?ids=${skus}`, { headers: this.headers })
-      const data = await res.json() as JumboAverage[]
+      const { data } = await axios<JumboAverage[]>(`${this.average_url}?ids=${skus}`, { headers: this.headers })
       return data
     } catch (error) {
       console.log('Error al obtener los averages')
