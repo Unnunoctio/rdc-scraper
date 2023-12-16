@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/return-await */
+/* eslint-disable @typescript-eslint/no-base-to-string */
 import { ObjectId } from 'mongoose'
 import { Drink, DrinkDB, Info, InfoDB, ProductDB, RecordDB, Scraper, WebsiteDB } from '../types'
 import { DrinkModel, ImageModel, InfoModel, ProductModel, RecordModel, WebsiteModel } from '../models/index.js'
