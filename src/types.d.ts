@@ -75,6 +75,7 @@ export interface Spider {
 }
 
 export interface Scraper {
+  website: string
   product_sku: any
   title: string
   brand: string
