@@ -1,50 +1,20 @@
-import { Document, Types } from 'mongoose'
+import { Date, ObjectId, Document } from 'mongoose'
 
-// Scraper types
-export type UrlType = `https://${string}`
+// BASE DE DATOS
+export interface DrinkDB extends Drink, Document {}
 
-export interface HeaderType { [key: string]: string }
+export interface ImageDB extends Image, Document {}
 
-export interface Spider {
-  websiteName: string
-  websiteUrl: string
-  websiteLogo: string
-  headers: HeaderType
-  startUrls: UrlType[]
-  blockedUrls?: UrlType[]
-  productUrl: UrlType
-  watcher: number
+export interface InfoDB extends Info, Document {}
 
-  run: () => Promise<ProductScraper[]>
-}
+export interface RecordDB extends Record, Document {}
 
-export interface UpdateWebsite {
-  url: string
-  price: number
-  best_price: number
-  average: number
-  watch: number
-}
+export interface WebsiteDB extends Website, Document {}
 
-export interface ProductScraper {
-  websiteName: string
-  title: string
-  brand: string
-  category: string
-  subCategory: string
-  url: string
-  images?: Images
-  price?: number
-  bestPrice?: number
-  quantity?: number
-  alcoholicGrade?: number
-  content?: number
-  package?: string
-}
+export interface ProductDB extends Product, Document {}
 
-// API responses
+// INTERFACE
 export interface Drink {
-  _id: Types.ObjectId
   name: string
   brand: string
   alcoholic_grade: number
@@ -52,48 +22,71 @@ export interface Drink {
   package: string
   category: string
   sub_category: string
-  made_in?: string
+  made_in: string
   variety?: string
-  bitterness?: string
+  bitterness?: number
+  temperature?: string
   strain?: string
   vineyard?: string
 }
 
-// Mongoose models
-export interface ProductUnit extends Document {
-  name: string
-  brand: string
-  alcoholic_grade: number
-  content: number
-  package: string
-  category: string
-  sub_category: string
-  made_in?: string
-  variety?: string
-  bitterness?: string
-  strain?: string
-  vineyard?: string
-}
-
-export interface Website {
-  name: string
-  logo: string
-  url: string
-  price: number
-  best_price: number
-  average: number
-  watch: number
-}
-
-interface Images {
+export interface Image {
   small: string
   large: string
 }
 
-export interface Product extends Document {
-  title: string
+export interface Info {
+  name: string
+  url: string
+  logo: string
+}
+
+export interface Record {
+  price: number
+  date: Date
+}
+
+export interface Website {
+  info: ObjectId
+  path: string
+  price: number
+  best_price: number
+  average: number | null
+  last_update: number
+  in_stock: boolean
+  records: ObjectId[]
+}
+
+export interface Product {
+  sku: number
   quantity: number
-  images: Images
-  product: ProductUnit
-  websites: Types.DocumentArray<Website>
+  images: ObjectId
+  drink: ObjectId
+  websites: ObjectId[]
+}
+
+// SPIDER
+export interface Spider {
+  info: Info
+  headers: { [key: string]: string }
+  start_urls: string[]
+
+  run: () => Promise<Scraper[]>
+}
+
+export interface Scraper {
+  website: string
+  product_sku: any
+  title: string
+  brand: string
+  category: string
+  url: string
+  price: number
+  best_price: number
+  average?: number | null
+  images?: Image
+  alcoholic_grade?: number
+  content?: number
+  quantity?: number
+  package?: string
 }

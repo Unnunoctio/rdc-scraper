@@ -1,42 +1,35 @@
-/* eslint-disable @typescript-eslint/no-misused-promises */
 import 'dotenv/config.js'
 import mongoose from 'mongoose'
 import schedule from 'node-schedule'
-import { getNewProductUnits } from './utils/utilsAPI.js'
-import { JumboSpider, SantaSpider } from './spiders/index.js'
+import { runSpiders } from './spiders/index.js'
+import { sendEmail } from './utils/sendEmail.js'
 
 console.log('Starting app...')
 
-// Configure mongoose
+// Connect to MongoDB
 mongoose.connect(process.env.DB_URI as string)
-  .then(() => console.log('Database connected'))
-  .catch((err) => console.log(err))
+  .then(() => console.log('Connected to Database'))
+  .catch(err => console.error(err))
 
 // Scraping function
-const scraping = async (): Promise<void> => {
-  console.log('Starting scraping...')
-  try {
-    await getNewProductUnits()
-
-    const jumboSpider = new JumboSpider()
-    const santaSpider = new SantaSpider()
-
-    await jumboSpider.run()
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    await santaSpider.run()
-
-    console.log('Finally scraping.')
-  } catch (error) {
-    console.log('Error in scraping.')
-    console.error(error)
-  }
+const firstScraping = async (): Promise<void> => {
+  console.log('Scraping 8 am')
+  await runSpiders()
+  console.log('Finally scraping')
 }
 
-// Scraping a las 1 am en chile
-schedule.scheduleJob('0 4 * * *', scraping)
+const secondScraping = async (): Promise<void> => {
+  console.log('Scraping 2 pm')
+  const notFoundProducts = await runSpiders()
+  // Si es sabado - enviar un correo electronico
+  if (new Date().getDay() === 6) {
+    await sendEmail(notFoundProducts)
+  }
+  console.log('Finally scraping')
+}
 
-// Scraping a las 8 am en chile
-schedule.scheduleJob('0 11 * * *', scraping)
+// Scraping a las 8am en chile
+schedule.scheduleJob('0 11 * * *', firstScraping)
 
-// Scraping a las 2 pm en chile
-schedule.scheduleJob('0 17 * * *', scraping)
+// Scraping a las 2pm en chile
+schedule.scheduleJob('0 17 * * *', secondScraping)

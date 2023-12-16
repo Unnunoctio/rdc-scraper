@@ -1,7 +1,5 @@
 import axios from 'axios'
-import { HeaderType, ProductScraper, Spider, UpdateWebsite, UrlType, Website } from '../types'
-import { addProduct, deleteWithoutStock, isProductExist, updateWebsite } from '../utils/utilsDB.js'
-import { isBrandExist } from '../utils/utilsAPI.js'
+import { Info, Scraper, Spider } from '../types'
 
 interface JumboResponse {
   redirect: null
@@ -16,7 +14,7 @@ interface JumboProduct {
   brand: string
   categories: string[]
   linkText: string
-  items: Item[]
+  items: JumboItem[]
   'Graduación Alcohólica'?: string[]
   Grado?: string[]
   Envase?: string[]
@@ -24,17 +22,17 @@ interface JumboProduct {
   Contenido?: string[]
 }
 
-interface Item {
-  images: Image[]
-  sellers: Seller[]
+interface JumboItem {
+  images: JumboImage[]
+  sellers: JumboSeller[]
 }
 
-interface Image {
+interface JumboImage {
   imageUrl: string
   imageTag: string
 }
 
-interface Seller {
+interface JumboSeller {
   commertialOffer: {
     Price: number
     ListPrice: number
@@ -43,234 +41,224 @@ interface Seller {
   }
 }
 
-interface Average {
+interface JumboAverage {
   average: number
   totalCount: number
-  id: number
+  id: string
 }
 
 export class JumboSpider implements Spider {
-  websiteName: string = 'Jumbo'
-  websiteUrl: string = 'https://jumbo.cl'
-  websiteLogo: string = 'https://assets.jumbo.cl/favicon/favicon-192.png'
-  headers: HeaderType = {
+  info: Info = {
+    name: 'Jumbo',
+    url: 'https://jumbo.cl',
+    logo: 'https://assets.jumbo.cl/favicon/favicon-192.png'
+  }
+
+  headers: { [key: string]: string } = {
     apiKey: 'WlVnnB7c1BblmgUPOfg'
   }
 
-  startUrls: UrlType[] = [
+  start_urls: string[] = [
     'https://sm-web-api.ecomm.cencosud.com/catalog/api/v4/products/vinos-cervezas-y-licores/cervezas',
     'https://sm-web-api.ecomm.cencosud.com/catalog/api/v4/products/vinos-cervezas-y-licores/destilados',
     'https://sm-web-api.ecomm.cencosud.com/catalog/api/v4/products/vinos-cervezas-y-licores/vinos'
   ]
 
-  productUrl: UrlType = 'https://sm-web-api.ecomm.cencosud.com/catalog/api/v1/product'
-  watcher: number = new Date().getTime()
-  averageUrl: UrlType = 'https://sm-web-api.ecomm.cencosud.com/catalog/api/v1/reviews/ratings'
+  average_url = 'https://sm-web-api.ecomm.cencosud.com/catalog/api/v1/reviews/ratings'
 
-  async run (): Promise<ProductScraper[]> {
-    console.time('Jumbo Spider')
+  async run (): Promise<Scraper[]> {
     console.log('Running Jumbo Spider')
+    console.time('Jumbo Spider')
 
-    // ? Obtener todas las paginas por cada url
-    const pages = await Promise.all(this.startUrls.map(async (url: UrlType) => {
-      const totalPages = await this.getTotalPages(url)
-      const pages = this.generatePages(totalPages, url)
-      return pages
-    }))
+    // Obtener todas las paginas por cada url
+    const pages = (await Promise.all(this.start_urls.map(async (url) => {
+      return await this.getPages(url)
+    }))).flat()
 
-    // ? Obtener todos los productos por cada pagina
-    const allPages = pages.flat()
-    const products = await Promise.all(allPages.map(async (url: UrlType) => {
-      const { data }: { data: JumboResponse } = await axios.get(`${url}&sc=11`, { headers: this.headers })
+    // Obtener todos los productos de todas las paginas
+    const products = (await Promise.all(pages.map(async (url) => {
+      const { data } = await axios.get<JumboResponse>(`${url}`, { headers: this.headers })
       return data.products
+    }))).flat()
+
+    // Obtener productos scrapeados
+    const scrapedProducts = await Promise.all(products.map(async (product) => {
+      let scraped = this.getMainData(product)
+      scraped = this.getExtraData(scraped, product)
+      // Obtener mas data desde la pagina del producto
+      return scraped
     }))
 
-    // ?: Recorre los productos, actualiza o agrega en la DB y retorna los productos no encontrados
-    const allProducts = products.flat()
-    const productsNotFound = await Promise.all(allProducts.map(async (product: JumboProduct) => {
-      const url = `${this.websiteUrl}/${product.linkText}/p`
+    // Filtrar productos scrapeados correctos
+    const filtered = scrapedProducts.filter((scraped) => {
+      return scraped.title !== undefined &&
+             scraped.brand !== undefined &&
+             scraped.category !== undefined &&
+             scraped.url !== undefined &&
+             scraped.price !== undefined &&
+             scraped.best_price !== undefined &&
+             scraped.images?.small !== undefined && scraped.images?.large !== undefined &&
+             scraped.alcoholic_grade !== undefined &&
+             scraped.content !== undefined &&
+             scraped.quantity !== undefined &&
+             scraped.package !== undefined
+    })
 
-      if (await isProductExist(url)) {
-        const { data }: { data: Average[] } = await axios.get(`${this.averageUrl}?ids=${product.productId}`, { headers: this.headers })
-        const update: UpdateWebsite = {
-          url,
-          price: product.items[0].sellers[0].commertialOffer.PriceWithoutDiscount,
-          best_price: product.items[0].sellers[0].commertialOffer.Price,
-          average: data[0].average,
-          watch: this.watcher
-        }
+    // Obtener los averages de cada producto scrapeado
+    const averages = await this.getAverages(filtered)
 
-        await updateWebsite(update)
-        return undefined
-      } else {
-        let productData = this.getMainProductData(product)
-
-        if (await isBrandExist(productData.brand)) {
-          productData = this.getExtraProductData(productData, product)
-          // TODO: Test urls
-          if (url === '') {
-            console.log(productData)
-            console.log(product)
-          }
-          if (productData.quantity === undefined || productData.alcoholicGrade === undefined || productData.content === undefined || productData.package === undefined) return productData
-
-          const { data }: { data: Average[] } = await axios.get(`${this.averageUrl}?ids=${product.productId}`, { headers: this.headers })
-          const website: Website = {
-            name: this.websiteName,
-            logo: this.websiteLogo,
-            url,
-            price: productData.price as number,
-            best_price: productData.bestPrice as number,
-            average: data[0].average,
-            watch: this.watcher
-          }
-
-          const isProductAdd = await addProduct(website, productData)
-          if (isProductAdd) {
-            return undefined
-          } else {
-            return productData
-          }
-        } else {
-          return productData
-        }
+    // Por cada producto scrapeado agregar su average
+    const finalProducts = filtered.map((scraped) => {
+      const average = averages?.find(a => a.id === scraped.product_sku)
+      if (average !== undefined && average.totalCount !== 0) {
+        return { ...scraped, average: average?.average }
+      } else if (average !== undefined && average.totalCount === 0) {
+        return { ...scraped, average: null }
       }
-    }))
+      return scraped
+    })
 
-    // ?: Elimina los websites de Jumbo de los productos donde el watcher es distinto al generado
-    await deleteWithoutStock(this.websiteName, this.watcher)
-
-    console.log('Jumbo Spider finished')
     console.timeEnd('Jumbo Spider')
-    return productsNotFound.filter(product => product !== undefined) as ProductScraper[]
+    return finalProducts
   }
 
-  async getTotalPages (url: UrlType): Promise<number> {
-    const { data }: { data: JumboResponse } = await axios.get(`${url}?sc=11`, { headers: this.headers })
-    return Math.ceil(data.recordsFiltered / 40)
-  }
+  async getPages (url: string): Promise<string[]> {
+    const { data } = await axios.get<JumboResponse>(`${url}?sc=11`, { headers: this.headers })
+    const total = Math.ceil(data.recordsFiltered / 40)
 
-  generatePages (totalPages: number, baseUrl: UrlType): UrlType[] {
-    const pages: UrlType[] = []
-    for (let i = 1; i <= totalPages; i++) {
-      pages.push(`${baseUrl}?page=${i}`)
+    const pages: string[] = []
+    for (let i = 1; i <= total; i++) {
+      pages.push(`${url}?sc=11&page=${i}`)
     }
     return pages
   }
 
-  getMainProductData (product: JumboProduct): ProductScraper {
-    const productData: ProductScraper = {
-      websiteName: this.websiteName,
+  getMainData (product: JumboProduct): Scraper {
+    const scraped: Scraper = {
+      website: this.info.name,
+      product_sku: product.productId,
       title: product.productName,
       brand: product.brand,
       category: product.categories[0].split('/')[2],
-      subCategory: product.categories[0].split('/')[3],
-      url: `${this.websiteUrl}/${product.linkText}/p`
+      url: `/${product.linkText}/p`,
+      price: product.items[0].sellers[0].commertialOffer.PriceWithoutDiscount,
+      best_price: product.items[0].sellers[0].commertialOffer.Price
     }
-    return productData
+    return scraped
   }
 
-  getExtraProductData (productData: ProductScraper, product: JumboProduct): ProductScraper {
-    const link = product.items[0].images[0].imageUrl
-    const linkSplit = link.split('/')
-    const linkParsed = linkSplit.slice(0, -1).join('/')
+  getExtraData (scraped: Scraper, product: JumboProduct): Scraper {
+    // Images
+    try {
+      const link = product.items[0].images[0].imageUrl
+      const linkSplit = link.split('/')
+      const linkParsed = linkSplit.slice(0, -1).join('/')
 
-    const extraData: ProductScraper = {
-      ...productData,
-      images: {
+      scraped.images = {
         small: `${linkParsed}-280-280`,
         large: `${linkParsed}-750-750`
-      },
-      price: product.items[0].sellers[0].commertialOffer.PriceWithoutDiscount,
-      bestPrice: product.items[0].sellers[0].commertialOffer.Price
+      }
+    } catch (error) {
+      console.log('Error al obtener las imagenes')
     }
 
-    //* Quantity
+    // Quantity
     if (product.productName.includes('Pack')) {
       if (product.Cantidad !== undefined) {
         const match = product.Cantidad[0].match(/^(\d+)/)
-        extraData.quantity = (match != null) ? Number(match[0]) : undefined
+        scraped.quantity = (match != null) ? Number(match[0]) : undefined
       } else {
         const match = product.productName.match(/(\d+)\s*un\./i)
-        extraData.quantity = (match != null) ? Number(match[1]) : undefined
+        scraped.quantity = (match != null) ? Number(match[1]) : undefined
       }
     } else if (product.productName.includes('Bipack')) {
-      extraData.quantity = 2
+      scraped.quantity = 2
     } else {
-      extraData.quantity = 1
+      scraped.quantity = 1
     }
 
-    //* Extra verfify quatity
-    if (extraData.quantity !== undefined && extraData.quantity > 12 && productData.category === 'Destilados') {
-      extraData.quantity = 1
+    // Extra verfify quatity
+    if (scraped.quantity !== undefined && scraped.quantity > 12 && scraped.category === 'Destilados') {
+      scraped.quantity = 1
     }
 
-    //* Alcoholic Grade
+    // Alcoholic Grade
     if (product['Graduación Alcohólica'] !== undefined) {
       const match = product['Graduación Alcohólica'][0].match(/(\d+(?:\.\d+)?)°/)
-      extraData.alcoholicGrade = (match != null) ? Number(match[1]) : undefined
+      scraped.alcoholic_grade = (match != null) ? Number(match[1]) : undefined
     } else if (product.Grado !== undefined) {
       const match = product.Grado[0].match(/(\d+(?:\.\d+)?)°/)
-      extraData.alcoholicGrade = (match != null) ? Number(match[1]) : undefined
+      scraped.alcoholic_grade = (match != null) ? Number(match[1]) : undefined
     } else if (product.productName.includes('°')) {
       const match = product.productName.match(/(\d+(?:\.\d+)?)°/)
-      extraData.alcoholicGrade = (match != null) ? Number(match[1]) : undefined
+      scraped.alcoholic_grade = (match != null) ? Number(match[1]) : undefined
     }
 
-    //* Content
+    // Content
     if (product.Contenido !== undefined) {
       const match = product.Contenido[0].match(/(\d+(\.\d+)?)\s*(cc|ml|L|l|litro|litros?)/i)
       if (match !== null) {
         const amount = Number(match[1])
         const unit = match[3].toLowerCase()
-        extraData.content = (unit === 'l' || unit === 'litro' || unit === 'litros') ? amount * 1000 : amount
+        scraped.content = (unit === 'l' || unit === 'litro' || unit === 'litros') ? amount * 1000 : amount
       } else {
-        extraData.content = undefined
+        scraped.content = undefined
       }
     } else {
       const match = product.productName.match(/(\d+(?:\.\d+)?) (cc|L)/i)
       if (match !== null) {
         const amount = Number(match[1])
         const unit = match[2].toLowerCase()
-        extraData.content = (unit === 'l') ? amount * 1000 : amount
+        scraped.content = (unit === 'l') ? amount * 1000 : amount
       } else {
-        extraData.content = undefined
+        scraped.content = undefined
       }
     }
 
-    //* Package
-    //* Package Default Destilados
-    if (productData.category === 'Destilados') extraData.package = 'Botella'
+    // Package
+    // Package Default Destilados
+    if (scraped.category === 'Destilados') scraped.package = 'Botella'
 
     if (product.Envase !== undefined) {
       if (product.Envase[0].includes('Botella')) {
-        extraData.package = 'Botella'
+        scraped.package = 'Botella'
       } else if (product.Envase[0].includes('Lata')) {
-        extraData.package = 'Lata'
+        scraped.package = 'Lata'
       } else if (product.Envase[0].includes('Barril')) {
-        extraData.package = 'Barril'
+        scraped.package = 'Barril'
       } else if (product.Envase[0].includes('Tetrapack')) {
-        extraData.package = 'Tetrapack'
-      } else if (product.Envase[0].includes('Caja') && productData.category === 'Destilados') {
-        extraData.package = 'Botella'
-      } else if (product.Envase[0].includes('Caja') && productData.category === 'Vinos') {
-        extraData.package = 'Tetrapack'
+        scraped.package = 'Tetrapack'
+      } else if (product.Envase[0].includes('Caja') && scraped.category === 'Destilados') {
+        scraped.package = 'Botella'
+      } else if (product.Envase[0].includes('Caja') && scraped.category === 'Vinos') {
+        scraped.package = 'Tetrapack'
       } else {
-        extraData.package = undefined
+        scraped.package = undefined
       }
     } else {
       const titleLower = product.productName.toLowerCase()
       if (titleLower.includes('botella')) {
-        extraData.package = 'Botella'
+        scraped.package = 'Botella'
       } else if (titleLower.includes('lata')) {
-        extraData.package = 'Lata'
+        scraped.package = 'Lata'
       } else if (titleLower.includes('barril')) {
-        extraData.package = 'Barril'
+        scraped.package = 'Barril'
       } else if (titleLower.includes('tetrapack') || titleLower.includes('caja')) {
-        extraData.package = 'Tetrapack'
+        scraped.package = 'Tetrapack'
       }
     }
 
-    return extraData
+    return scraped
+  }
+
+  async getAverages (products: Scraper[]): Promise<JumboAverage[] | undefined> {
+    const skus = products.map((product) => product.product_sku).join(',')
+    try {
+      const { data } = await axios<JumboAverage[]>(`${this.average_url}?ids=${skus}`, { headers: this.headers })
+      return data
+    } catch (error) {
+      console.log('Error al obtener los averages')
+      return undefined
+    }
   }
 }
