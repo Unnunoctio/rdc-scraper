@@ -1,4 +1,4 @@
-import { Date, ObjectId, Document } from 'mongoose'
+import { ObjectId, Document } from 'mongoose'
 
 // BASE DE DATOS
 export interface DrinkDB extends Drink, Document {}

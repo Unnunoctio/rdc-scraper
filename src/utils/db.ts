@@ -1,14 +1,12 @@
-/* eslint-disable @typescript-eslint/return-await */
-/* eslint-disable @typescript-eslint/no-base-to-string */
 import { ObjectId } from 'mongoose'
 import { Drink, DrinkDB, Info, InfoDB, ProductDB, RecordDB, Scraper, WebsiteDB } from '../types'
 import { DrinkModel, ImageModel, InfoModel, ProductModel, RecordModel, WebsiteModel } from '../models/index.js'
 
 const getWebsiteInfo = async (info: Info): Promise<InfoDB | null> => {
   try {
-    const websiteInfo = await InfoModel.findOne({ url: info.url })
+    const websiteInfo = await InfoModel.findOne<InfoDB>({ url: info.url })
     if (websiteInfo !== null) return websiteInfo
-    return InfoModel.create(info)
+    return await InfoModel.create<InfoDB>(info)
   } catch (error) {
     console.log(`Error al obtener/crear la info: ${info.name}`)
     return null
@@ -53,16 +51,17 @@ const findAndUpdateWebsite = async (product: Scraper, watcher: number): Promise<
       { price: product.price, best_price: product.best_price, average: product.average, last_update: watcher, in_stock: true },
       { new: true }
     )
+    if (websiteUpdated === null) return null
 
-    // Crear un record del día
-    const newRecord = await RecordModel.findOneAndUpdate<RecordDB>({ date: new Date().setHours(0, 0, 0, 0) }, { price: product.best_price }, { upsert: true, new: true })
+    const record = await RecordModel.findById<RecordDB>(websiteUpdated.records[websiteUpdated.records.length - 1])
+    // comparar fecha del record con la fecha actual
+    const currentDate = new Date()
+    currentDate.setHours(0, 0, 0, 0)
+    if (currentDate.getTime() === record?.date.getTime()) return websiteUpdated
 
-    // Actualizar el website con el nuevo record
-    if (newRecord._id.toString() === website.records[website.records.length - 1]?.toString()) {
-      return websiteUpdated
-    } else {
-      return WebsiteModel.findByIdAndUpdate<WebsiteDB>(website._id, { records: [...website.records, newRecord._id] }, { new: true })
-    }
+    // crear new record y agregarlo a el website
+    const newRecord = await RecordModel.create<RecordDB>({ date: currentDate, price: websiteUpdated.best_price })
+    return await WebsiteModel.findByIdAndUpdate<WebsiteDB>(websiteUpdated._id, { records: [...websiteUpdated.records, newRecord._id] }, { new: true })
   } catch (error) {
     console.log('Error al actualizar el website')
     return null
@@ -72,9 +71,11 @@ const findAndUpdateWebsite = async (product: Scraper, watcher: number): Promise<
 const addWebsite = async (product: Scraper, infoId: ObjectId, watcher: number): Promise<WebsiteDB | null> => {
   try {
     // Crear record
-    const newRecord = await RecordModel.create({ date: new Date().setHours(0, 0, 0, 0), price: product.best_price })
+    const currentDate = new Date()
+    currentDate.setHours(0, 0, 0, 0)
+    const newRecord = await RecordModel.create<RecordDB>({ date: currentDate, price: product.best_price })
     // Crear website
-    return WebsiteModel.create({
+    return await WebsiteModel.create({
       info: infoId,
       path: product.url,
       price: product.price,
@@ -93,7 +94,7 @@ const addWebsite = async (product: Scraper, infoId: ObjectId, watcher: number): 
 const generateSku = async (): Promise<number> => {
   while (true) {
     const sku = parseInt((Math.round(Math.random() * 321123) * new Date().getTime()).toString().slice(0, 6))
-    const product = await ProductModel.findOne({ sku })
+    const product = await ProductModel.findOne<ProductDB>({ sku })
     if (product === null) return sku
   }
 }
@@ -148,4 +149,13 @@ export const saveProducts = async (products: Scraper[], drinksApi: Drink[], info
   }
 
   return notFound.filter(p => p !== undefined) as Scraper[]
+}
+
+export const deleteAll = async (): Promise<void> => {
+  await WebsiteModel.deleteMany()
+  await ProductModel.deleteMany()
+  await DrinkModel.deleteMany()
+  await InfoModel.deleteMany()
+  await RecordModel.deleteMany()
+  await ImageModel.deleteMany()
 }
