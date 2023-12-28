@@ -40,9 +40,9 @@ const getDrink = (product: Scraper, drinksApi: Drink[]): Drink | null => {
   }
 }
 
-const findAndUpdateWebsite = async (product: Scraper, watcher: number): Promise<WebsiteDB | null> => {
+const findAndUpdateWebsite = async (product: Scraper, infoId: ObjectId, watcher: number): Promise<WebsiteDB | null> => {
   try {
-    const website = await WebsiteModel.findOne<WebsiteDB>({ path: product.url })
+    const website = await WebsiteModel.findOne<WebsiteDB>({ path: product.url, info: infoId })
     if (website === null) return null
 
     // Actualizar el website con la nueva informacion
@@ -106,7 +106,7 @@ export const saveProducts = async (products: Scraper[], drinksApi: Drink[], info
   if (websiteInfo === null) return []
 
   const notFound = await Promise.all(products.map(async (p) => {
-    const websiteUpdated = await findAndUpdateWebsite(p, watcher)
+    const websiteUpdated = await findAndUpdateWebsite(p, websiteInfo._id, watcher)
     if (websiteUpdated !== null) return undefined
 
     const drinkApi = getDrink(p, drinksApi)
