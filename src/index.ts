@@ -28,6 +28,11 @@ const secondScraping = async (): Promise<void> => {
   console.log('Finally scraping')
 }
 
+// First scraping
+firstScraping()
+  .then(() => console.log('First scraping finished'))
+  .catch(err => console.error(err))
+
 // Scraping a las 8am en chile
 schedule.scheduleJob('0 11 * * *', firstScraping)
 
