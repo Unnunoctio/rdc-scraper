@@ -95,8 +95,8 @@ export class JumboSpider implements Spider {
              scraped.brand !== undefined &&
              scraped.category !== undefined &&
              scraped.url !== undefined &&
-             scraped.price !== undefined &&
-             scraped.best_price !== undefined &&
+             scraped.price !== undefined && scraped.price !== 0 &&
+             scraped.best_price !== undefined && scraped.best_price !== 0 &&
              scraped.images?.small !== undefined && scraped.images?.large !== undefined &&
              scraped.alcoholic_grade !== undefined &&
              scraped.content !== undefined &&
