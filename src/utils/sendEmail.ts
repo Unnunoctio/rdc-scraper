@@ -1,6 +1,7 @@
 import Excel from 'exceljs'
-import nodemailer from 'nodemailer'
+// import nodemailer from 'nodemailer'
 import { Scraper } from '../types'
+import { Resend } from 'resend'
 
 export const sendEmail = async (notFound: Scraper[]): Promise<void> => {
   // Crear Excel
@@ -24,34 +25,21 @@ export const sendEmail = async (notFound: Scraper[]): Promise<void> => {
   })
   const buffer = await workbook.xlsx.writeBuffer()
 
-  // Crear transporte de correo
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      type: 'OAuth2',
-      user: process.env.MAIL_USERNAME,
-      pass: process.env.MAIL_PASSWORD,
-      clientId: process.env.OAUTH_CLIENT_ID,
-      clientSecret: process.env.OAUTH_CLIENT_SECRET,
-      refreshToken: process.env.OAUTH_REFRESH_TOKEN
-    }
-  })
+  // Crear email
+  const resend = new Resend(process.env.RESEND_API_KEY)
 
-  // Crear mail options
-  const mailOptions = {
-    from: process.env.MAIL_USERNAME,
-    to: process.env.MAIL_USERNAME,
+  resend.emails.send({
+    from: 'onboarding@resend.dev',
+    to: 'rincondelcurao@gmail.com',
     subject: 'Products Not Found',
+    html: 'Products Not Found',
     attachments: [
       {
         filename,
-        content: buffer,
-        contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        content: buffer as Buffer
       }
     ]
-  }
-
-  transporter.sendMail(mailOptions)
+  })
     .then(() => console.log('Email sent'))
     .catch(err => console.error(err))
 }
