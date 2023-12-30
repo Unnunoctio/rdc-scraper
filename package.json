@@ -12,7 +12,7 @@
     "exceljs": "4.4.0",
     "mongoose": "8.0.3",
     "node-schedule": "2.1.1",
-    "nodemailer": "6.9.7"
+    "resend": "2.1.0"
   },
   "devDependencies": {
     "@types/node-schedule": "2.1.5",
