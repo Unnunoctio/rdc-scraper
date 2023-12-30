@@ -90,3 +90,9 @@ export interface Scraper {
   quantity?: number
   package?: string
 }
+
+// FILES
+export interface ExcelFile {
+  filename: string
+  content: Buffer
+}
