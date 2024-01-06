@@ -169,7 +169,8 @@ export class SantaSpider implements Spider {
       if (product.Cantidad !== undefined) {
         const match = product.Cantidad[0].match(/^(\d+)/)
         scraped.quantity = (match != null) ? Number(match[0]) : undefined
-      } else {
+      }
+      if (scraped.quantity === undefined) {
         const match = product.productName.match(/(\d+)\s*un\./i)
         scraped.quantity = (match != null) ? Number(match[1]) : undefined
       }
@@ -191,7 +192,8 @@ export class SantaSpider implements Spider {
     } else if (product.Grado !== undefined) {
       const match = product.Grado[0].match(/(\d+(?:\.\d+)?)°/)
       scraped.alcoholic_grade = (match != null) ? Number(match[1]) : undefined
-    } else if (product.productName.includes('°')) {
+    }
+    if (product.productName.includes('°') && scraped.alcoholic_grade === undefined) {
       const match = product.productName.match(/(\d+(?:\.\d+)?)°/)
       scraped.alcoholic_grade = (match != null) ? Number(match[1]) : undefined
     }
@@ -203,17 +205,14 @@ export class SantaSpider implements Spider {
         const amount = Number(match[1])
         const unit = match[3].toLowerCase()
         scraped.content = (unit === 'l' || unit === 'litro' || unit === 'litros') ? amount * 1000 : amount
-      } else {
-        scraped.content = undefined
       }
-    } else {
+    }
+    if (scraped.content === undefined) {
       const match = product.productName.match(/(\d+(?:\.\d+)?) (cc|L)/i)
       if (match !== null) {
         const amount = Number(match[1])
         const unit = match[2].toLowerCase()
         scraped.content = (unit === 'l') ? amount * 1000 : amount
-      } else {
-        scraped.content = undefined
       }
     }
 
@@ -234,10 +233,9 @@ export class SantaSpider implements Spider {
         scraped.package = 'Botella'
       } else if (product.Envase[0].includes('Caja') && scraped.category === 'Vinos') {
         scraped.package = 'Tetrapack'
-      } else {
-        scraped.package = undefined
       }
-    } else {
+    }
+    if (scraped.package === undefined) {
       const titleLower = product.productName.toLowerCase()
       if (titleLower.includes('botella')) {
         scraped.package = 'Botella'
