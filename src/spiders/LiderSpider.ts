@@ -120,8 +120,14 @@ export class LiderSpider implements Spider {
              scraped.package !== undefined
     })
 
+    const finalProducts = filtered.map((scraped) => {
+      return {
+        ...scraped,
+        average: null
+      }
+    })
     console.timeEnd('Lider Spider')
-    return filtered as Scraper[]
+    return finalProducts as Scraper[]
   }
 
   async getBodies (body: Body): Promise<Body[]> {
