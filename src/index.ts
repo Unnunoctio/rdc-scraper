@@ -28,6 +28,11 @@ const secondScraping = async (): Promise<void> => {
   console.log('Finally scraping')
 }
 
+// Test scraping
+// testSpider()
+//   .then(() => console.log('Test scraping finished'))
+//   .catch(err => console.error(err))
+
 // First scraping
 secondScraping()
   .then(() => console.log('First scraping finished'))
