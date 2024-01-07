@@ -19,16 +19,16 @@ const getDrink = (product: Scraper, drinksApi: Drink[]): Drink | null => {
     if (options.length === 0) return null
 
     let selectedDrink: Drink | null = null
-    let matchingWords: string[] = []
+    let matchingWords: number = -1
 
-    const titleSplit = product.title.toLowerCase().split(' ')
+    const titleSplit = product.title.toLowerCase().split(' ').filter(word => word !== '')
 
     options.forEach(option => {
-      const nameSplit = option.name.replace(`${product.brand} `, '').toLowerCase().split(' ')
+      const nameSplit = option.name.toLowerCase().replace(`${option.brand.toLowerCase()}`, '').split(' ').filter(word => word !== '')
       const isMatching = nameSplit.every(word => titleSplit.includes(word))
 
-      if (isMatching && (nameSplit.length > matchingWords.length)) {
-        matchingWords = nameSplit
+      if (isMatching && (nameSplit.length > matchingWords)) {
+        matchingWords = nameSplit.length
         selectedDrink = option
       }
     })
