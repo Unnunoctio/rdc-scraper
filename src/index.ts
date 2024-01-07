@@ -13,19 +13,26 @@ mongoose.connect(process.env.DB_URI as string)
 
 // Scraping function
 const firstScraping = async (): Promise<void> => {
-  console.log('Scraping 8 am')
-  await runSpiders()
-  console.log('Finally scraping')
+  console.log('------------------ first scraping ------------------')
+  const notFoundProducts = await runSpiders()
+  await sendEmail(notFoundProducts)
+  console.log('-------------- first scraping finished -------------')
 }
 
-const secondScraping = async (): Promise<void> => {
-  console.log('Scraping 2 pm')
+const morningScraping = async (): Promise<void> => {
+  console.log('------------------- scraping 8 am ------------------')
+  await runSpiders()
+  console.log('----------------- scraping finised -----------------')
+}
+
+const afternoonScraping = async (): Promise<void> => {
+  console.log('------------------- scraping 2 pm ------------------')
   const notFoundProducts = await runSpiders()
   // Si es sabado - enviar un correo electronico
   if (new Date().getDay() === 6) {
     await sendEmail(notFoundProducts)
   }
-  console.log('Finally scraping')
+  console.log('----------------- scraping finised -----------------')
 }
 
 // Test scraping
@@ -34,12 +41,11 @@ const secondScraping = async (): Promise<void> => {
 //   .catch(err => console.error(err))
 
 // First scraping
-secondScraping()
-  .then(() => console.log('First scraping finished'))
-  .catch(err => console.error(err))
+await new Promise(resolve => setTimeout(resolve, 3000))
+await firstScraping()
 
 // Scraping a las 8am en chile
-schedule.scheduleJob('0 11 * * *', firstScraping)
+schedule.scheduleJob('0 11 * * *', morningScraping)
 
 // Scraping a las 2pm en chile
-schedule.scheduleJob('0 17 * * *', secondScraping)
+schedule.scheduleJob('0 17 * * *', afternoonScraping)
