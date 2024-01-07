@@ -174,7 +174,8 @@ export class LiderSpider implements Spider {
     const quantity = this.getEspecification(product.specifications, 'Unidades por paquete')
     if (quantity !== undefined) {
       scraped.quantity = Number(quantity)
-    } else {
+    }
+    if (Number.isNaN(scraped.quantity)) {
       if (product.displayName.includes('Pack')) {
         const match = product.displayName.match(/Pack, (\d+)/)
         scraped.quantity = (match !== null) ? Number(match[1]) : undefined
@@ -193,7 +194,8 @@ export class LiderSpider implements Spider {
     const content = this.getEspecification(product.specifications, 'Contenido neto')
     if (content !== undefined) {
       scraped.content = Number(content.split(' ')[0])
-    } else {
+    }
+    if (Number.isNaN(scraped.content)) {
       const match = product.displayName.match(/(\d+)\s*(ml|cc|L|l|c\/u)|(\d+)(ml|cc|L|l|c\/u)/)
       if (match !== null) {
         const amount = Number(match[1])
@@ -207,7 +209,8 @@ export class LiderSpider implements Spider {
     if (packaging !== undefined) {
       if (packaging === 'Botella' || packaging === 'Botellas') scraped.package = 'Botella'
       if (packaging === 'Lata' || packaging === 'Latas') scraped.package = 'Lata'
-    } else {
+    }
+    if (scraped.package === undefined) {
       const name = product.displayName
       if (name.includes('Botella') || name.includes('Botellas') || name.includes('Botellin')) scraped.package = 'Botella'
       if (name.includes('Lata') || name.includes('Latas')) scraped.package = 'Lata'
