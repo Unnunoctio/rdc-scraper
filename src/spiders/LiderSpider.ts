@@ -46,7 +46,7 @@ export class LiderSpider implements Spider {
   info: Info = {
     name: 'Lider',
     url: 'https://www.lider.cl',
-    logo: 'https://www.lider.cl/catalogo/favicon.ico'
+    logo: 'https://www.walmartchile.cl/wp-content/themes/walmartchile/img/favicon-32x32.png'
   }
 
   headers: { [key: string]: string } = {
