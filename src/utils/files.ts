@@ -7,14 +7,15 @@ export const createExcel = async (products: Scraper[], title: string): Promise<E
   const workbook = new Excel.Workbook()
 
   const productsByBrand = products.reduce((acc, product) => {
+    const brand = product.brand.toLowerCase().replaceAll('/', '-')
     // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-    if (!(acc[product.brand])) acc[product.brand] = []
-    acc[product.brand].push(product)
+    if (!(acc[brand])) acc[brand] = []
+    acc[brand].push(product)
     return acc
   }, {})
 
   Object.keys(productsByBrand).forEach((brand) => {
-    const worksheet = workbook.addWorksheet(brand.replaceAll('/', '-'))
+    const worksheet = workbook.addWorksheet(brand)
     worksheet.columns = [
       { header: 'Website', key: 'website' },
       { header: 'Title', key: 'title' },

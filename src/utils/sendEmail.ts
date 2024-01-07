@@ -10,7 +10,7 @@ export const sendEmail = async (notFound: Scraper[]): Promise<void> => {
   // Crear email
   const resend = new Resend(process.env.RESEND_API_KEY)
 
-  resend.emails.send({
+  await resend.emails.send({
     from: 'onboarding@resend.dev',
     to: 'rincondelcurao@gmail.com',
     subject: 'Products Not Found',
@@ -21,6 +21,5 @@ export const sendEmail = async (notFound: Scraper[]): Promise<void> => {
       spiritsFile
     ]
   })
-    .then(() => console.log('Email sent'))
-    .catch(err => console.error(err))
+  console.log('Email sent')
 }
