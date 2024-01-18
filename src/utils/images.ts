@@ -40,7 +40,7 @@ const getImage = async (image: Buffer, folder: string, name: string, size: strin
       })
 
       // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-      if (upload.url) return upload.url
+      if (upload.secure_url) return upload.secure_url
     } catch (error) {
       console.log('Error al subir la imagen en cloudinary')
     }
