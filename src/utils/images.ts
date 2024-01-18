@@ -7,42 +7,42 @@ export const uploadImages = async (imageUrl: string, category: string, brand: st
   const res = await axios.get(imageUrl, { responseType: 'arraybuffer' } as any)
   const data = Buffer.from(res.data)
 
-  // upload image 280px
-  const upload280: UploadApiResponse = await new Promise((resolve) => {
-    cloudinary.uploader.upload_stream(
-      {
-        public_id: `${sku}-280`,
-        folder: `${category.toLowerCase()}/${brand.toLowerCase().replaceAll('/', '-')}`,
-        overwrite: true,
-        transformation: [
-          { aspect_ratio: '1.0', width: '280', height: '280', crop: 'scale' },
-          { quality: 'auto:best', fetch_format: 'webp' }
-        ]
-      },
-      (_, result) => {
-        return resolve(result as UploadApiResponse)
-      }).end(data)
-  })
+  const folder = `${category.toLowerCase()}/${brand.toLowerCase().replaceAll('/', '-')}`
 
-  // upload image 750px
-  const upload750: UploadApiResponse = await new Promise((resolve) => {
-    cloudinary.uploader.upload_stream(
-      {
-        public_id: `${sku}-750`,
-        folder: `${category.toLowerCase()}/${brand.toLowerCase().replaceAll('/', '-')}`,
-        overwrite: true,
-        transformation: [
-          { aspect_ratio: '1.0', width: '750', height: '750', crop: 'scale' },
-          { quality: 'auto:best', fetch_format: 'webp' }
-        ]
-      },
-      (_, result) => {
-        return resolve(result as UploadApiResponse)
-      }).end(data)
-  })
+  // get images
+  const url280 = await getImage(data, folder, `${sku}-280`, '280')
+  const url750 = await getImage(data, folder, `${sku}-750`, '750')
 
   return {
-    small: upload280.url,
-    large: upload750.url
+    small: url280,
+    large: url750
+  }
+}
+
+const getImage = async (image: Buffer, folder: string, name: string, size: string): Promise<string> => {
+  while (true) {
+    try {
+      const upload: UploadApiResponse = await new Promise((resolve) => {
+        cloudinary.uploader.upload_stream(
+          {
+            public_id: name,
+            folder,
+            overwrite: true,
+            transformation: [
+              { aspect_ratio: '1.0', width: size, height: size, crop: 'scale' },
+              { quality: 'auto:best', fetch_format: 'webp' }
+            ]
+          },
+          (_, result) => {
+            return resolve(result as UploadApiResponse)
+          }
+        ).end(image)
+      })
+
+      // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
+      if (upload.url) return upload.url
+    } catch (error) {
+      console.log('Error al subir la imagen en cloudinary')
+    }
   }
 }
