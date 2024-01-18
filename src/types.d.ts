@@ -83,8 +83,8 @@ export interface Scraper {
   url: string
   price: number
   best_price: number
+  image?: string
   average?: number | null
-  images?: Image
   alcoholic_grade?: number
   content?: number
   quantity?: number

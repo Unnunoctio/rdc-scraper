@@ -1,6 +1,7 @@
 import 'dotenv/config.js'
 import mongoose from 'mongoose'
 import schedule from 'node-schedule'
+import { v2 as cloudinary } from 'cloudinary'
 import { runSpiders } from './spiders/index.js'
 import { sendEmail } from './utils/sendEmail.js'
 
@@ -10,6 +11,13 @@ console.log('Starting app...')
 mongoose.connect(process.env.DB_URI as string)
   .then(() => console.log('Connected to Database'))
   .catch(err => console.error(err))
+
+// Connect to Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_SECRET_KEY
+})
 
 // Scraping function
 const firstScraping = async (): Promise<void> => {

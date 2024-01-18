@@ -113,7 +113,7 @@ export class LiderSpider implements Spider {
              scraped.url !== undefined &&
              scraped.price !== undefined && scraped.price !== 0 &&
              scraped.best_price !== undefined && scraped.best_price !== 0 &&
-             scraped.images?.small !== undefined && scraped.images?.large !== undefined &&
+             scraped.image !== undefined &&
              scraped.alcoholic_grade !== undefined &&
              scraped.content !== undefined &&
              scraped.quantity !== undefined &&
@@ -165,10 +165,7 @@ export class LiderSpider implements Spider {
 
   getExtraData (scraped: Scraper, product: Product): Scraper {
     // Images
-    scraped.images = {
-      small: product.images.defaultImage.replaceAll('180', '280'),
-      large: product.images.defaultImage.replaceAll('180', '750')
-    }
+    scraped.image = product.images.defaultImage.replace('&scale=size[180x180]', '')
 
     // Quantity
     const quantity = this.getEspecification(product.specifications, 'Unidades por paquete')
