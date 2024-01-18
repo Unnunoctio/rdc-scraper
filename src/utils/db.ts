@@ -1,6 +1,7 @@
 import { ObjectId } from 'mongoose'
 import { Drink, DrinkDB, Info, InfoDB, ProductDB, RecordDB, Scraper, WebsiteDB } from '../types'
 import { DrinkModel, ImageModel, InfoModel, ProductModel, RecordModel, WebsiteModel } from '../models/index.js'
+import { uploadImages } from './images.js'
 
 const getWebsiteInfo = async (info: Info): Promise<InfoDB | null> => {
   try {
@@ -126,7 +127,9 @@ export const saveProducts = async (products: Scraper[], drinksApi: Drink[], info
         const newProduct = await ProductModel.create({ sku: await generateSku(), quantity: p.quantity, drink: drink._id, websites: [] })
         if (newProduct !== null) {
           const newWebsite = await addWebsite(p, websiteInfo._id, watcher)
-          const newImages = await ImageModel.create({ small: p.images?.small, large: p.images?.large })
+
+          const cloudImages = await uploadImages(p.image as string, p.category, p.brand, newProduct.sku)
+          const newImages = await ImageModel.create({ small: cloudImages.small, large: cloudImages.large })
           if (newWebsite !== null && newImages !== null) {
             await ProductModel.findByIdAndUpdate(newProduct._id, { websites: [newWebsite._id], images: newImages._id })
             return undefined

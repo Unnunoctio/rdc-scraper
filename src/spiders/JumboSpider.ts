@@ -97,7 +97,7 @@ export class JumboSpider implements Spider {
              scraped.url !== undefined &&
              scraped.price !== undefined && scraped.price !== 0 &&
              scraped.best_price !== undefined && scraped.best_price !== 0 &&
-             scraped.images?.small !== undefined && scraped.images?.large !== undefined &&
+             scraped.image !== undefined &&
              scraped.alcoholic_grade !== undefined &&
              scraped.content !== undefined &&
              scraped.quantity !== undefined &&
@@ -154,12 +154,10 @@ export class JumboSpider implements Spider {
       const linkSplit = link.split('/')
       const linkParsed = linkSplit.slice(0, -1).join('/')
 
-      scraped.images = {
-        small: `${linkParsed}-280-280`,
-        large: `${linkParsed}-750-750`
-      }
+      scraped.image = linkParsed
     } catch (error) {
       console.log('Error al obtener las imagenes')
+      scraped.image = undefined
     }
 
     // Quantity
