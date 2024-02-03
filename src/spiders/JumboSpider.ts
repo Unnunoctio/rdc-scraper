@@ -84,6 +84,7 @@ export class JumboSpider implements Spider {
     // Obtener productos scrapeados
     const scrapedProducts = await Promise.all(products.map(async (product) => {
       let scraped = this.getMainData(product)
+      if (scraped === undefined) return undefined
       scraped = this.getExtraData(scraped, product)
       // Obtener mas data desde la pagina del producto
       return scraped
@@ -91,7 +92,7 @@ export class JumboSpider implements Spider {
 
     // Filtrar productos scrapeados correctos
     const filtered = scrapedProducts.filter((scraped) => {
-      return scraped.title !== undefined &&
+      return scraped?.title !== undefined &&
              scraped.brand !== undefined &&
              scraped.category !== undefined &&
              scraped.url !== undefined &&
@@ -102,7 +103,7 @@ export class JumboSpider implements Spider {
              scraped.content !== undefined &&
              scraped.quantity !== undefined &&
              scraped.package !== undefined
-    })
+    }) as Scraper[]
 
     // Obtener los averages de cada producto scrapeado
     const averages = await this.getAverages(filtered)
@@ -133,18 +134,23 @@ export class JumboSpider implements Spider {
     return pages
   }
 
-  getMainData (product: JumboProduct): Scraper {
-    const scraped: Scraper = {
-      website: this.info.name,
-      product_sku: product.productId,
-      title: product.productName,
-      brand: product.brand,
-      category: product.categories[0].split('/')[2],
-      url: `/${product.linkText}/p`,
-      price: product.items[0].sellers[0].commertialOffer.PriceWithoutDiscount,
-      best_price: product.items[0].sellers[0].commertialOffer.Price
+  getMainData (product: JumboProduct): Scraper | undefined {
+    try {
+      const scraped: Scraper = {
+        website: this.info.name,
+        product_sku: product.productId,
+        title: product.productName,
+        brand: product.brand,
+        category: product.categories[0].split('/')[2],
+        url: `/${product.linkText}/p`,
+        price: product.items[0].sellers[0].commertialOffer.PriceWithoutDiscount,
+        best_price: product.items[0].sellers[0].commertialOffer.Price
+      }
+      return scraped
+    } catch (error) {
+      console.log('Error al obtener los datos principales')
+      return undefined
     }
-    return scraped
   }
 
   getExtraData (scraped: Scraper, product: JumboProduct): Scraper {

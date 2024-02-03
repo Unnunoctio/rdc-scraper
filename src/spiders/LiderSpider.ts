@@ -101,6 +101,7 @@ export class LiderSpider implements Spider {
     const scrapedProducts = await Promise.all(products.map(async (product) => {
       if (!product.available) return undefined
       let scraped = this.getMainData(product)
+      if (scraped === undefined) return undefined
       scraped = this.getExtraData(scraped, product)
       return scraped
     }))
@@ -140,18 +141,23 @@ export class LiderSpider implements Spider {
     return bodies
   }
 
-  getMainData (product: Product): Scraper {
-    const scraped: Scraper = {
-      website: this.info.name,
-      product_sku: product.sku,
-      title: product.displayName,
-      brand: product.brand,
-      category: this.getCategory(product.categorias),
-      url: `/supermercado/product/sku/${product.sku}`,
-      price: product.price.BasePriceReference,
-      best_price: product.price.BasePriceSales
+  getMainData (product: Product): Scraper | undefined {
+    try {
+      const scraped: Scraper = {
+        website: this.info.name,
+        product_sku: product.sku,
+        title: product.displayName,
+        brand: product.brand,
+        category: this.getCategory(product.categorias),
+        url: `/supermercado/product/sku/${product.sku}`,
+        price: product.price.BasePriceReference,
+        best_price: product.price.BasePriceSales
+      }
+      return scraped
+    } catch (error) {
+      console.log('Error al obtener los datos principales')
+      return undefined
     }
-    return scraped
   }
 
   getCategory (categories: string[]): string {
@@ -165,7 +171,12 @@ export class LiderSpider implements Spider {
 
   getExtraData (scraped: Scraper, product: Product): Scraper {
     // Images
-    scraped.image = product.images.defaultImage.replace('&scale=size[180x180]', '')
+    try {
+      scraped.image = product.images.defaultImage.replace('&scale=size[180x180]', '')
+    } catch (error) {
+      scraped.image = undefined
+      console.log('Error al obtener las imagenes')
+    }
 
     // Quantity
     const quantity = this.getEspecification(product.specifications, 'Unidades por paquete')
