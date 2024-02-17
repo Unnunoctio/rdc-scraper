@@ -42,6 +42,8 @@ const getDrink = (product: Scraper, drinksApi: Drink[]): Drink | null => {
 }
 
 const findAndUpdateWebsite = async (product: Scraper, infoId: ObjectId, watcher: number): Promise<WebsiteDB | null> => {
+  const ENVIRONMENT = process.env.NODE_ENV as string
+
   try {
     const website = await WebsiteModel.findOne<WebsiteDB>({ path: product.url, info: infoId })
     if (website === null) return null
@@ -54,11 +56,15 @@ const findAndUpdateWebsite = async (product: Scraper, infoId: ObjectId, watcher:
     )
     if (websiteUpdated === null) return null
 
+    // Si esta en desarrollo, no actualiza ni agrega fechas
+    if (ENVIRONMENT === 'DEV') return websiteUpdated
+
     const record = await RecordModel.findById<RecordDB>(websiteUpdated.records[websiteUpdated.records.length - 1])
     // comparar fecha del record con la fecha actual
     const currentDate = new Date()
     currentDate.setHours(0, 0, 0, 0)
-    if (currentDate.getTime() === record?.date.getTime()) return websiteUpdated
+
+    if (currentDate.toISOString().split('T')[0] === record?.date.toISOString().split('T')[0]) return websiteUpdated
 
     // crear new record y agregarlo a el website
     const newRecord = await RecordModel.create<RecordDB>({ date: currentDate, price: websiteUpdated.best_price })
@@ -70,7 +76,24 @@ const findAndUpdateWebsite = async (product: Scraper, infoId: ObjectId, watcher:
 }
 
 const addWebsite = async (product: Scraper, infoId: ObjectId, watcher: number): Promise<WebsiteDB | null> => {
+  const ENVIRONMENT = process.env.NODE_ENV as string
+
   try {
+    // Si esta en desarrollo, no agrega fecha
+    if (ENVIRONMENT === 'DEV') {
+      // Crear website
+      return await WebsiteModel.create({
+        info: infoId,
+        path: product.url,
+        price: product.price,
+        best_price: product.best_price,
+        average: product.average,
+        last_update: watcher,
+        in_stock: true,
+        records: []
+      })
+    }
+
     // Crear record
     const currentDate = new Date()
     currentDate.setHours(0, 0, 0, 0)

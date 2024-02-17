@@ -6,6 +6,7 @@ import { runSpiders } from './spiders/index.js'
 import { sendEmail } from './utils/sendEmail.js'
 
 console.log('Starting app...')
+console.log('Environment: ', process.env.NODE_ENV)
 
 // Connect to MongoDB
 mongoose.connect(process.env.DB_URI as string)
@@ -23,7 +24,9 @@ cloudinary.config({
 const firstScraping = async (): Promise<void> => {
   console.log('------------------ first scraping ------------------')
   const notFoundProducts = await runSpiders()
-  await sendEmail(notFoundProducts)
+  if (process.env.NODE_ENV === 'PRODUCTION') {
+    await sendEmail(notFoundProducts)
+  }
   console.log('-------------- first scraping finished -------------')
 }
 
@@ -42,11 +45,6 @@ const afternoonScraping = async (): Promise<void> => {
   }
   console.log('----------------- scraping finised -----------------')
 }
-
-// Test scraping
-// testSpider()
-//   .then(() => console.log('Test scraping finished'))
-//   .catch(err => console.error(err))
 
 // First scraping
 await new Promise(resolve => setTimeout(resolve, 3000))
