@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { Info, Scraper, Spider } from '../types'
+import { Incomplete, Info, Scraper, Spider } from '../types'
 
 interface SantaResponse {
   redirect: null
@@ -67,10 +67,10 @@ export class SantaSpider implements Spider {
   ]
 
   average_url = 'https://sm-web-api.ecomm.cencosud.com/catalog/api/v1/reviews/ratings'
+  product_url = 'https://sm-web-api.ecomm.cencosud.com/catalog/api/v1/pedrofontova/product'
 
-  async run (): Promise<Scraper[]> {
+  async run (): Promise<[Scraper[], Incomplete[]]> {
     console.log('Running Santa Spider')
-    console.time('Santa Spider')
 
     // Obtener todas las paginas por cada url
     const pages = (await Promise.all(this.start_urls.map(async (url) => {
@@ -92,14 +92,27 @@ export class SantaSpider implements Spider {
       return scraped
     }))
 
+    // Filtrar los productos incompletos
+    const incompletely = scrapedProducts.map((s) => {
+      if (s?.url !== undefined && (s.title === undefined || s.brand === undefined || s.alcoholic_grade === undefined || s.content === undefined || s.quantity === undefined || s.package === undefined)) {
+        const productLink = s.url.split('/')[1]
+        const incomplete: Incomplete = {
+          website: this.info.name,
+          product_url: `${this.product_url}/${productLink}`
+        }
+        return incomplete
+      }
+      return undefined
+    })
+
     // Filtrar productos scrapeados correctos
     const filtered = scrapedProducts.filter((scraped) => {
       return scraped?.title !== undefined &&
              scraped.brand !== undefined &&
              scraped.category !== undefined &&
              scraped.url !== undefined &&
-             scraped.price !== undefined &&
-             scraped.best_price !== undefined &&
+             scraped.price !== undefined && scraped.price !== 0 &&
+             scraped.best_price !== undefined && scraped.best_price !== 0 &&
              scraped.image !== undefined &&
              scraped.alcoholic_grade !== undefined &&
              scraped.content !== undefined &&
@@ -121,8 +134,7 @@ export class SantaSpider implements Spider {
       return scraped
     })
 
-    console.timeEnd('Santa Spider')
-    return finalProducts
+    return [finalProducts, incompletely.filter(i => i !== undefined) as Incomplete[]]
   }
 
   async getPages (url: string): Promise<string[]> {
@@ -193,8 +205,10 @@ export class SantaSpider implements Spider {
     if (product['Graduación Alcohólica'] !== undefined) {
       const match = product['Graduación Alcohólica'][0].match(/(\d+(?:\.\d+)?)°/)
       scraped.alcoholic_grade = (match != null) ? Number(match[1]) : undefined
-    } else if (product.Grado !== undefined) {
-      const match = product.Grado[0].match(/(\d+(?:\.\d+)?)°/)
+    }
+    if (product.Grado !== undefined && scraped.alcoholic_grade === undefined) {
+      let match = product.Grado[0].match(/(\d+(?:\.\d+)?)°/)
+      if (match === null) match = product.Grado[0].match(/(\d+(?:\.\d+)?)%/)
       scraped.alcoholic_grade = (match != null) ? Number(match[1]) : undefined
     }
     if (product.productName.includes('°') && scraped.alcoholic_grade === undefined) {

@@ -1,10 +1,5 @@
 import axios from 'axios'
-import { Incomplete, Info, Scraper, Spider } from '../types'
-
-interface LiderResponse {
-  products: Product[]
-  nbPages: number
-}
+import { Info, Scraper, UnitarySpider } from '../../types'
 
 interface Product {
   sku: string
@@ -34,15 +29,7 @@ interface Price {
   BasePriceSales: number
 }
 
-interface Body {
-  categories: string
-  page: number
-  facets: string[]
-  sortBy: string
-  hitsPerPage: number
-}
-
-export class LiderSpider implements Spider {
+export class LiderUnitarySpider implements UnitarySpider {
   info: Info = {
     name: 'Lider',
     url: 'https://www.lider.cl',
@@ -54,70 +41,43 @@ export class LiderSpider implements Spider {
     Tenant: 'supermercado'
   }
 
-  start_urls: string[] = [
-    'https://apps.lider.cl/supermercado/bff/category'
-  ]
+  async run (startUrls: string[]): Promise<Scraper[]> {
+    console.log('Running Lider Unitary Spider')
 
-  start_bodies: Body[] = [
-    {
-      categories: 'Bebidas y Licores/Cervezas',
-      page: 1,
-      facets: [],
-      sortBy: '',
-      hitsPerPage: 100
-    },
-    {
-      categories: 'Bebidas y Licores/Destilados',
-      page: 1,
-      facets: [],
-      sortBy: '',
-      hitsPerPage: 100
-    },
-    {
-      categories: 'Bebidas y Licores/Vinos y Espumantes',
-      page: 1,
-      facets: [],
-      sortBy: '',
-      hitsPerPage: 100
+    // Separar urls en batchs
+    const splitUrls = this.getSplitArray(startUrls, 300)
+
+    const products: Product[] = []
+    for (const urls of splitUrls) {
+      // espera 5 segundos
+      await new Promise(resolve => setTimeout(resolve, 5000))
+
+      // obtiene los productos de cada url
+      const fetchProducts = await Promise.all(urls.map(async (url) => {
+        const { data } = await axios.get<Product>(`${url}`, { headers: this.headers })
+        return data
+      }))
+      products.push(...fetchProducts)
     }
-  ]
-
-  product_url = 'https://apps.lider.cl/supermercado/bff/products'
-
-  async run (): Promise<[Scraper[], Incomplete[]]> {
-    console.log('Running Lider Spider')
-
-    // Obtener todas las paginas por cada body
-    const bodies = (await Promise.all(this.start_bodies.map(async (body) => {
-      return await this.getBodies(body)
-    }))).flat()
-
-    // Obtener todos los productos de todos los body
-    const products = (await Promise.all(bodies.map(async (body) => {
-      const { data } = await axios.post<LiderResponse>(`${this.start_urls[0]}`, body, { headers: this.headers })
-      return data.products
-    }))).flat()
 
     // Obtener productos scrapeados
     const scrapedProducts = await Promise.all(products.map(async (product) => {
-      if (!product.available) return undefined
       let scraped = this.getMainData(product)
       if (scraped === undefined) return undefined
       scraped = this.getExtraData(scraped, product)
       return scraped
     }))
 
-    // Filtrar los productos incompletos
-    const incompletely = scrapedProducts.map((s) => {
-      if (s?.product_sku !== undefined && (s.title === undefined || s.brand === undefined || s.alcoholic_grade === undefined || s.content === undefined || s.quantity === undefined || s.package === undefined)) {
-        const incomplete: Incomplete = {
-          website: this.info.name,
-          product_url: `${this.product_url}/${s.product_sku as string}`
-        }
-        return incomplete
-      }
-      return undefined
-    })
+    // // Mostrar los productos incompletos
+    // let i = 0
+    // scrapedProducts.map((s) => {
+    //   if (s?.url !== undefined && (s.title === undefined || s.brand === undefined || s.alcoholic_grade === undefined || s.content === undefined || s.quantity === undefined || s.package === undefined)) {
+    //     i += 1
+    //     console.log(i)
+    //     console.log(s)
+    //   }
+    //   return s
+    // })
 
     // Filtrar productos scrapeados correctos
     const filtered = scrapedProducts.filter((scraped) => {
@@ -141,17 +101,15 @@ export class LiderSpider implements Spider {
       }
     })
 
-    return [finalProducts as Scraper[], incompletely.filter(i => i !== undefined) as Incomplete[]]
+    return finalProducts as Scraper[]
   }
 
-  async getBodies (body: Body): Promise<Body[]> {
-    const { data } = await axios.post<LiderResponse>(`${this.start_urls[0]}`, body, { headers: this.headers })
-
-    const bodies: Body[] = []
-    for (let i = 1; i <= data.nbPages; i++) {
-      bodies.push({ ...body, page: i })
+  getSplitArray (arr: string[], size: number): string[][] {
+    const result: string[][] = []
+    for (let i = 0; i < arr.length; i += size) {
+      result.push(arr.slice(i, i + size))
     }
-    return bodies
+    return result
   }
 
   getMainData (product: Product): Scraper | undefined {

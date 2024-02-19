@@ -1,12 +1,5 @@
 import axios from 'axios'
-import { Incomplete, Info, Scraper, Spider } from '../types'
-
-interface JumboResponse {
-  redirect: null
-  products: JumboProduct[]
-  recordsFiltered: number
-  operator: string
-}
+import { Info, Scraper, UnitarySpider } from '../../types'
 
 interface JumboProduct {
   productId: string
@@ -47,7 +40,7 @@ interface JumboAverage {
   id: string
 }
 
-export class JumboSpider implements Spider {
+export class JumboUnitarySpider implements UnitarySpider {
   info: Info = {
     name: 'Jumbo',
     url: 'https://jumbo.cl',
@@ -58,50 +51,42 @@ export class JumboSpider implements Spider {
     apiKey: 'WlVnnB7c1BblmgUPOfg'
   }
 
-  start_urls: string[] = [
-    'https://sm-web-api.ecomm.cencosud.com/catalog/api/v4/products/vinos-cervezas-y-licores/cervezas',
-    'https://sm-web-api.ecomm.cencosud.com/catalog/api/v4/products/vinos-cervezas-y-licores/destilados',
-    'https://sm-web-api.ecomm.cencosud.com/catalog/api/v4/products/vinos-cervezas-y-licores/vinos'
-  ]
-
   average_url = 'https://sm-web-api.ecomm.cencosud.com/catalog/api/v1/reviews/ratings'
-  product_url = 'https://sm-web-api.ecomm.cencosud.com/catalog/api/v1/product'
 
-  async run (): Promise<[Scraper[], Incomplete[]]> {
-    console.log('Running Jumbo Spider')
+  async run (startUrls: string[]): Promise<Scraper[]> {
+    console.log('Running Jumbo Unitary Spider')
 
-    // Obtener todas las paginas por cada url
-    const pages = (await Promise.all(this.start_urls.map(async (url) => {
-      return await this.getPages(url)
-    }))).flat()
+    // Separar urls en batchs
+    const splitUrls = this.getSplitArray(startUrls, 300)
 
-    // Obtener todos los productos de todas las paginas
-    const products = (await Promise.all(pages.map(async (url) => {
-      const { data } = await axios.get<JumboResponse>(`${url}`, { headers: this.headers })
-      return data.products
-    }))).flat()
+    const products: JumboProduct[] = []
+    for (const urls of splitUrls) {
+      // espera 5 segundos
+      await new Promise(resolve => setTimeout(resolve, 5000))
+
+      // obtiene los productos de cada url
+      const fetchProducts = await Promise.all(urls.map(async (url) => {
+        const { data } = await axios.get<JumboProduct[]>(`${url}`, { headers: this.headers })
+        return data[0]
+      }))
+      products.push(...fetchProducts)
+    }
 
     // Obtener productos scrapeados
     const scrapedProducts = await Promise.all(products.map(async (product) => {
       let scraped = this.getMainData(product)
       if (scraped === undefined) return undefined
       scraped = this.getExtraData(scraped, product)
-      // Obtener mas data desde la pagina del producto
       return scraped
     }))
 
-    // Filtrar los productos incompletos
-    const incompletely = scrapedProducts.map((s) => {
-      if (s?.url !== undefined && (s.title === undefined || s.brand === undefined || s.alcoholic_grade === undefined || s.content === undefined || s.quantity === undefined || s.package === undefined)) {
-        const productLink = s.url.split('/')[1]
-        const incomplete: Incomplete = {
-          website: this.info.name,
-          product_url: `${this.product_url}/${productLink}`
-        }
-        return incomplete
-      }
-      return undefined
-    })
+    // Mostrar los productos incompletos
+    // scrapedProducts.map((s) => {
+    //   if (s?.url !== undefined && (s.title === undefined || s.brand === undefined || s.alcoholic_grade === undefined || s.content === undefined || s.quantity === undefined || s.package === undefined)) {
+    //     console.log(s)
+    //   }
+    //   return s
+    // })
 
     // Filtrar productos scrapeados correctos
     const filtered = scrapedProducts.filter((scraped) => {
@@ -132,18 +117,15 @@ export class JumboSpider implements Spider {
       return scraped
     })
 
-    return [finalProducts, incompletely.filter(i => i !== undefined) as Incomplete[]]
+    return finalProducts
   }
 
-  async getPages (url: string): Promise<string[]> {
-    const { data } = await axios.get<JumboResponse>(`${url}?sc=11`, { headers: this.headers })
-    const total = Math.ceil(data.recordsFiltered / 40)
-
-    const pages: string[] = []
-    for (let i = 1; i <= total; i++) {
-      pages.push(`${url}?sc=11&page=${i}`)
+  getSplitArray (arr: string[], size: number): string[][] {
+    const result: string[][] = []
+    for (let i = 0; i < arr.length; i += size) {
+      result.push(arr.slice(i, i + size))
     }
-    return pages
+    return result
   }
 
   getMainData (product: JumboProduct): Scraper | undefined {
