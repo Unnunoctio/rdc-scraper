@@ -71,7 +71,14 @@ export interface Spider {
   headers: { [key: string]: string }
   start_urls: string[]
 
-  run: () => Promise<Scraper[]>
+  run: () => Promise<[Scraper[], Incomplete[]]>
+}
+
+export interface UnitarySpider {
+  info: Info
+  headers: { [key: string]: string }
+
+  run: (startUrls: string[]) => Promise<Scraper[]>
 }
 
 export interface Scraper {
@@ -89,6 +96,11 @@ export interface Scraper {
   content?: number
   quantity?: number
   package?: string
+}
+
+export interface Incomplete {
+  website: string
+  product_url: string
 }
 
 // FILES

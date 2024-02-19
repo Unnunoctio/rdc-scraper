@@ -124,6 +124,8 @@ const generateSku = async (): Promise<number> => {
 }
 
 export const saveProducts = async (products: Scraper[], drinksApi: Drink[], info: Info): Promise<Scraper[]> => {
+  console.log(`Saving ${info.name} Products in Database`)
+
   const watcher = new Date().getTime()
 
   const websiteInfo = await getWebsiteInfo(info)
@@ -137,7 +139,8 @@ export const saveProducts = async (products: Scraper[], drinksApi: Drink[], info
     if (drinkApi === null) return p
 
     try {
-      const drink = await DrinkModel.findOneAndUpdate<DrinkDB>({ name: drinkApi.name, brand: drinkApi.brand, content: drinkApi.content, package: drinkApi.package, alcoholic_grade: drinkApi.alcoholic_grade }, drinkApi, { upsert: true, new: true })
+      let drink = await DrinkModel.findOne<DrinkDB>({ name: drinkApi.name, brand: drinkApi.brand, content: drinkApi.content, package: drinkApi.package, alcoholic_grade: drinkApi.alcoholic_grade })
+      if (drink === null) drink = await DrinkModel.create<DrinkDB>(drinkApi)
 
       const product = await ProductModel.findOne<ProductDB>({ drink: drink._id, quantity: p.quantity })
       if (product !== null) {
@@ -163,6 +166,7 @@ export const saveProducts = async (products: Scraper[], drinksApi: Drink[], info
       return p
     } catch (error) {
       console.log(`Error al guardar el producto: ${p.title}`)
+      console.error(error)
       return p
     }
   }))
