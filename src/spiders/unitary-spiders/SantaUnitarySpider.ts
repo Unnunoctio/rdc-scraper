@@ -1,6 +1,6 @@
 import axios from 'axios'
 import { Info, Scraper, UnitarySpider } from '../../types'
-import { BATCH_LENGTH, SLEEP_TIME } from './constants'
+import { BATCH_LENGTH, SLEEP_TIME } from './constants.js'
 
 interface SantaProduct {
   productId: string
