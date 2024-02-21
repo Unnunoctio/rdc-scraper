@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { Info, Scraper, UnitarySpider } from '../../types'
+import { BATCH_LENGTH, SLEEP_TIME } from './constants'
 
 interface Product {
   sku: string
@@ -45,12 +46,12 @@ export class LiderUnitarySpider implements UnitarySpider {
     console.log('Running Lider Unitary Spider')
 
     // Separar urls en batchs
-    const splitUrls = this.getSplitArray(startUrls, 300)
+    const splitUrls = this.getSplitArray(startUrls, BATCH_LENGTH)
 
     const products: Product[] = []
     for (const urls of splitUrls) {
-      // espera 5 segundos
-      await new Promise(resolve => setTimeout(resolve, 5000))
+      // espera x segundos
+      await new Promise(resolve => setTimeout(resolve, SLEEP_TIME))
 
       // obtiene los productos de cada url
       const fetchProducts = await Promise.all(urls.map(async (url) => {
