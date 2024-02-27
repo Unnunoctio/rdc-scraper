@@ -67,10 +67,15 @@ export class JumboUnitarySpider implements UnitarySpider {
 
       // obtiene los productos de cada url
       const fetchProducts = await Promise.all(urls.map(async (url) => {
-        const { data } = await axios.get<JumboProduct[]>(`${url}`, { headers: this.headers })
-        return data[0]
+        try {
+          const { data } = await axios.get<JumboProduct[]>(`${url}`, { headers: this.headers })
+          return data[0]
+        } catch (error) {
+          console.log(`Error al hacer fetch: ${url}`)
+        }
+        return undefined
       }))
-      products.push(...fetchProducts)
+      products.push(...fetchProducts.filter(p => p !== undefined) as JumboProduct[])
     }
 
     // Obtener productos scrapeados
