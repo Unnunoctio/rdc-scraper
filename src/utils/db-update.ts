@@ -1,7 +1,7 @@
 import { ObjectId } from 'mongoose'
-import { RecordModel, WebsiteModel } from '../models'
+import { RecordModel, WebsiteModel } from '../models/index.js'
 import { RecordDB, UpdateWebsite, WebsiteDB } from '../types'
-import { ENVIRONMENT } from '../config'
+import { ENVIRONMENT } from '../config.js'
 
 const saveRecord = async (lastRecordId: ObjectId, price: number): Promise<RecordDB | undefined> => {
   try {

@@ -1,4 +1,4 @@
-import { WebsiteModel } from '../models'
+import { WebsiteModel } from '../models/index.js'
 import { WebsiteDB } from '../types'
 
 export const getAllPathWebsites = async (): Promise<String[]> => {

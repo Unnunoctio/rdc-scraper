@@ -1,5 +1,5 @@
 import 'dotenv/config.js'
-import { CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET, CLOUDINARY_NAME, DB_URI, ENVIRONMENT } from './config'
+import { CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET, CLOUDINARY_NAME, DB_URI, ENVIRONMENT } from './config.js'
 import mongoose from 'mongoose'
 import schedule from 'node-schedule'
 import { v2 as cloudinary } from 'cloudinary'

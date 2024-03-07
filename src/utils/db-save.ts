@@ -1,8 +1,8 @@
 import { ObjectId } from 'mongoose'
-import { DrinkModel, ImageModel, InfoModel, ProductModel, RecordModel, WebsiteModel } from '../models'
+import { DrinkModel, ImageModel, InfoModel, ProductModel, RecordModel, WebsiteModel } from '../models/index.js'
 import { Drink, DrinkDB, ImageDB, Info, InfoDB, ProductDB, RecordDB, Scraper, WebsiteDB } from '../types'
-import { ENVIRONMENT } from '../config'
-import { uploadImages } from './images'
+import { ENVIRONMENT } from '../config.js'
+import { uploadImages } from './images.js'
 
 const getInfo = async (info: Info): Promise<InfoDB | undefined> => {
   try {

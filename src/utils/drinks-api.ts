@@ -1,6 +1,6 @@
 import axios from 'axios'
 import { Drink } from '../types'
-import { DRINKS_API } from '../config'
+import { DRINKS_API } from '../config.js'
 
 export const getDrinksApi = async (): Promise<Drink[]> => {
   const drinksUrl = DRINKS_API as string
