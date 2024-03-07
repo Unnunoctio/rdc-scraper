@@ -37,6 +37,7 @@ export interface Image {
 
 export interface Info {
   name: string
+  url: string
   logo: string
 }
 
@@ -64,7 +65,22 @@ export interface Product {
   websites: ObjectId[]
 }
 
-// SCRAPER
+// SPIDER
+export interface Spider {
+  info: Info
+  headers: { [key: string]: string }
+  start_urls: string[]
+
+  run: () => Promise<[Scraper[], Incomplete[]]>
+}
+
+export interface UnitarySpider {
+  info: Info
+  headers: { [key: string]: string }
+
+  run: (startUrls: string[]) => Promise<Scraper[]>
+}
+
 export interface Scraper {
   website: string
   product_sku: any
@@ -82,12 +98,9 @@ export interface Scraper {
   package?: string
 }
 
-export interface UpdateWebsite {
-  product_sku: any
-  url: string
-  price: number
-  best_price: number
-  average?: number | null
+export interface Incomplete {
+  website: string
+  product_url: string
 }
 
 // FILES
