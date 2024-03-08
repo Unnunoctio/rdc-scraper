@@ -55,3 +55,50 @@ export interface JumboAverage {
   totalCount: number
   id: string
 }
+
+// SANTA
+interface SantaResponse {
+  redirect: null
+  products: SantaProduct[]
+  recordsFiltered: number
+  operator: string
+}
+
+interface SantaProduct {
+  productId: string
+  productName: string
+  brand: string
+  categories: string[]
+  linkText: string
+  items: SantaItem[]
+  'Graduación Alcohólica'?: string[]
+  Grado?: string[]
+  Envase?: string[]
+  Cantidad?: string[]
+  Contenido?: string[]
+}
+
+interface SantaItem {
+  images: SantaImage[]
+  sellers: SantaSeller[]
+}
+
+interface SantaImage {
+  imageUrl: string
+  imageTag: string
+}
+
+interface SantaSeller {
+  commertialOffer: {
+    Price: number
+    ListPrice: number
+    PriceWithoutDiscount: number
+    AvailableQuantity: number
+  }
+}
+
+interface SantaAverage {
+  average: number
+  totalCount: number
+  id: string
+}
