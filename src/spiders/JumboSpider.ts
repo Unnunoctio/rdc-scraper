@@ -20,7 +20,7 @@ export class JumboSpider implements Spider {
   ]
 
   block_urls: string[] = [
-    'https://www.jumbo.cl/cerveza-kunstmann-botella-330-cc-torobayo-nacional/p'
+    'https://jumbo.cl/cerveza-kunstmann-botella-330-cc-torobayo-nacional/p'
   ]
 
   page_url = 'https://jumbo.cl'
