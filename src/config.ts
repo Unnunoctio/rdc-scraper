@@ -5,5 +5,5 @@ export const CLOUDINARY_NAME = process.env.CLOUDINARY_NAME
 export const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY
 export const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_SECRET_KEY
 export const ENVIRONMENT = process.env.NODE_ENV
-export const SLEEP_TIME = process.env.SLEEP_TIME
-export const BATCH_SIZE = process.env.BATCH_SIZE
+export const SLEEP_TIME = Number(process.env.SLEEP_TIME) ?? 5000
+export const BATCH_SIZE = Number(process.env.BATCH_SIZE) ?? 200
