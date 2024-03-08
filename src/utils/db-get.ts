@@ -1,7 +1,7 @@
 import { WebsiteModel } from '../models/index.js'
 import { WebsiteDB } from '../types'
 
-export const getAllPathWebsites = async (): Promise<String[]> => {
+export const getAllPathWebsites = async (): Promise<string[]> => {
   try {
     const websites = await WebsiteModel.find<WebsiteDB>()
     return websites.map(w => w.path)
