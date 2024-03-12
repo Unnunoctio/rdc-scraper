@@ -10,12 +10,12 @@ export const uploadImages = async (imageUrl: string, category: string, brand: st
   const folder = `${category.toLowerCase()}/${brand.toLowerCase().replaceAll('/', '-')}`
 
   // get images
-  const url280 = await getImage(data, folder, `${sku}-280`, '280')
-  const url750 = await getImage(data, folder, `${sku}-750`, '750')
+  const small = await getImage(data, folder, `${sku}-200`, '200')
+  const large = await getImage(data, folder, `${sku}-600`, '600')
 
   return {
-    small: url280,
-    large: url750
+    small,
+    large
   }
 }
 
