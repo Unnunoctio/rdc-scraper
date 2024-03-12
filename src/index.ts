@@ -3,6 +3,7 @@ import { CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET, CLOUDINARY_NAME, DB_URI, ENV
 import mongoose from 'mongoose'
 import schedule from 'node-schedule'
 import { v2 as cloudinary } from 'cloudinary'
+import { runSpiders } from './spiders/run-spiders.js'
 
 console.log('Starting App')
 console.log('Environment:', ENVIRONMENT)
@@ -22,6 +23,7 @@ cloudinary.config({
 // Scraping function
 const firstScraping = async (): Promise<void> => {
   console.log('------------------ first scraping ------------------')
+  await runSpiders()
   console.log('-------------- first scraping finished -------------')
 }
 

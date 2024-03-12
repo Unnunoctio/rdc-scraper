@@ -11,22 +11,22 @@ const getInfo = async (info: Info): Promise<InfoDB | undefined> => {
 
     return await InfoModel.create<InfoDB>(info)
   } catch (error) {
-    console.error('Error al obtener/crear la info', info.name)
+    console.error('Error al obtener/crear la info', info.name, error)
     return undefined
   }
 }
 
-const getDrinkApi = (product: Scraper, drinks: Drink[]): Drink | undefined => {
+const getDrink = (product: Scraper, drinks: DrinkDB[]): DrinkDB | undefined => {
   try {
-    const options = drinks.filter(d => d.brand === product.brand && d.content === product.content && d.package === product.package && d.alcoholic_grade === product.alcoholic_grade)
-    if (options.length === 0) return undefined
+    const drinkOptions = drinks.filter(d => d.brand === product.brand && d.content === product.content && d.package === product.package && d.alcoholic_grade === product.alcoholic_grade)
+    if (drinkOptions.length === 0) return undefined
 
-    let selectedDrink: Drink | undefined
+    let selectedDrink: DrinkDB | undefined
     let matchingWords: number = -1
 
     const titleSplit = product.title.toLowerCase().split(' ').filter(word => word !== '')
 
-    options.forEach(option => {
+    drinkOptions.forEach(option => {
       const nameSplit = option.name.toLowerCase().replace(`${option.brand.toLowerCase()}`, '').split(' ').filter(word => word !== '')
       const isMatching = nameSplit.every(word => titleSplit.includes(word))
 
@@ -38,20 +38,19 @@ const getDrinkApi = (product: Scraper, drinks: Drink[]): Drink | undefined => {
 
     return selectedDrink
   } catch (error) {
-    console.error('Error al obtener el drink de la api', product.title)
+    console.error('Error al obtener el drink', product.title)
     return undefined
   }
 }
 
-const getDrink = async (drink: Drink): Promise<DrinkDB | undefined> => {
+const saveDrink = async (drink: Drink): Promise<void> => {
   try {
     const drinkDB = await DrinkModel.findOne<DrinkDB>({ name: drink.name, brand: drink.brand, content: drink.content, package: drink.package, alcoholic_grade: drink.alcoholic_grade })
-    if (drinkDB !== null) return drinkDB
+    if (drinkDB !== null) return
 
-    return await DrinkModel.create<DrinkDB>(drink)
+    await DrinkModel.create<DrinkDB>(drink)
   } catch (error) {
-    console.error('Error al obtener/crear el drink', drink.name)
-    return undefined
+    console.error('Error al guardar el drink', drink.name)
   }
 }
 
@@ -79,7 +78,7 @@ const saveWebsite = async (product: Scraper, infoId: ObjectId, watcher: number):
 
     return updated
   } catch (error) {
-    console.error('Error al guardar el website', product.url)
+    console.error('Error al guardar el website', product.url, error)
     return undefined
   }
 }
@@ -102,19 +101,16 @@ const generateSku = async (): Promise<number> => {
   }
 }
 
-export const saveManyProducts = async (products: Scraper[], drinks: Drink[], info: Info, watcher: number): Promise<Scraper[]> => {
+export const saveManyProducts = async (products: Scraper[], drinks: DrinkDB[], info: Info, watcher: number): Promise<Scraper[]> => {
   const infoDB = await getInfo(info)
   if (infoDB === undefined) return []
 
   const notFound = await Promise.all(products.map(async (p) => {
-    const drink = getDrinkApi(p, drinks)
+    const drink = getDrink(p, drinks)
     if (drink === undefined) return p
 
-    const drinkDB = await getDrink(drink)
-    if (drinkDB === undefined) return p
-
     try {
-      const product = await ProductModel.findOne<ProductDB>({ drink: drinkDB._id, quantity: p.quantity })
+      const product = await ProductModel.findOne<ProductDB>({ drink: drink._id, quantity: p.quantity })
       if (product !== null) {
         const newWebsite = await saveWebsite(p, infoDB._id, watcher)
         if (newWebsite !== undefined) {
@@ -122,10 +118,18 @@ export const saveManyProducts = async (products: Scraper[], drinks: Drink[], inf
           return undefined
         }
       } else {
-        const newProduct = await ProductModel.create({ sku: await generateSku(), quantity: p.quantity, drink: drinkDB._id, websites: [] })
+        const newProduct = await ProductModel.create({ sku: await generateSku(), quantity: p.quantity, drink: drink._id, websites: [] })
         if (newProduct !== null) {
           const newWebsite = await saveWebsite(p, infoDB._id, watcher)
+          // if (ENVIRONMENT === 'DEV') {
+          //   if (newWebsite !== undefined) {
+          //     await ProductModel.findByIdAndUpdate(newProduct._id, { $push: { websites: newWebsite._id } })
+          //     return undefined
+          //   }
+          // }
+
           const newImages = await saveImage(p.image as string, p.category, p.brand, newProduct.sku)
+
           if (newWebsite !== undefined && newImages !== undefined) {
             await ProductModel.findByIdAndUpdate(newProduct._id, { images: newImages._id, $push: { websites: newWebsite._id } })
             return undefined
@@ -145,4 +149,17 @@ export const saveManyProducts = async (products: Scraper[], drinks: Drink[], inf
   }))
 
   return notFound.filter(p => p !== undefined) as Scraper[]
+}
+
+export const saveManyDrinks = async (drinks: Drink[]): Promise<DrinkDB[]> => {
+  await Promise.all(drinks.map(async (d) => {
+    await saveDrink(d)
+  }))
+
+  try {
+    return await DrinkModel.find<DrinkDB>()
+  } catch (error) {
+    console.error('Error al obtener los drinks guardados')
+    return []
+  }
 }
