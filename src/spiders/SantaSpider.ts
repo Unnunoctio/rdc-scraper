@@ -1,56 +1,11 @@
 import axios from 'axios'
-import { Incomplete, Info, Scraper, Spider } from '../types'
-
-interface SantaResponse {
-  redirect: null
-  products: SantaProduct[]
-  recordsFiltered: number
-  operator: string
-}
-
-interface SantaProduct {
-  productId: string
-  productName: string
-  brand: string
-  categories: string[]
-  linkText: string
-  items: SantaItem[]
-  'Graduación Alcohólica'?: string[]
-  Grado?: string[]
-  Envase?: string[]
-  Cantidad?: string[]
-  Contenido?: string[]
-}
-
-interface SantaItem {
-  images: SantaImage[]
-  sellers: SantaSeller[]
-}
-
-interface SantaImage {
-  imageUrl: string
-  imageTag: string
-}
-
-interface SantaSeller {
-  commertialOffer: {
-    Price: number
-    ListPrice: number
-    PriceWithoutDiscount: number
-    AvailableQuantity: number
-  }
-}
-
-interface SantaAverage {
-  average: number
-  totalCount: number
-  id: string
-}
+import { Info, Scraper, UpdateWebsite } from '../types'
+import { SantaAverage, SantaProduct, SantaResponse, Spider } from './types'
+import { BATCH_SIZE, SLEEP_TIME } from '../config.js'
 
 export class SantaSpider implements Spider {
   info: Info = {
     name: 'Santa Isabel',
-    url: 'https://santaisabel.cl',
     logo: 'https://assets.santaisabel.cl/favicon/favicon-196x196.png'
   }
 
@@ -66,10 +21,15 @@ export class SantaSpider implements Spider {
     'https://sm-web-api.ecomm.cencosud.com/catalog/api/v4/pedrofontova/products/vinos-cervezas-y-licores/vinos'
   ]
 
+  block_urls: string[] = [
+    'https://santaisabel.cl/cerveza-torobayo-botella-330-cc-263611/p'
+  ]
+
+  page_url = 'https://www.santaisabel.cl'
   average_url = 'https://sm-web-api.ecomm.cencosud.com/catalog/api/v1/reviews/ratings'
   product_url = 'https://sm-web-api.ecomm.cencosud.com/catalog/api/v1/pedrofontova/product'
 
-  async run (): Promise<[Scraper[], Incomplete[]]> {
+  async run (paths: string[]): Promise<[UpdateWebsite[], Scraper[]]> {
     console.log('Running Santa Spider')
 
     // Obtener todas las paginas por cada url
@@ -83,69 +43,82 @@ export class SantaSpider implements Spider {
       return data.products
     }))).flat()
 
-    // Obtener productos scrapeados
-    const scrapedProducts = await Promise.all(products.map(async (product) => {
+    const updatingProducts: Array<UpdateWebsite | undefined> = []
+    const completeProducts: Scraper[] = []
+    const incompletesUrls: string[] = []
+
+    // Recorren los productos y se separan en los distintos arrays
+    products.forEach((product) => {
+      const path = `${this.page_url}/${product.linkText}/p`
+      // Saltar los productos bloqueados
+      if (this.block_urls.includes(path)) return
+
+      // Productos que solo necesitan actualizar precio y average
+      if (paths.includes(path)) {
+        updatingProducts.push(this.getUpdateData(product))
+        return
+      }
+
+      // Obtener toda la data del producto para saber si esta completo o incompleto
       let scraped = this.getMainData(product)
-      if (scraped === undefined) return undefined
-      scraped = this.getExtraData(scraped, product)
-      // Obtener mas data desde la pagina del producto
-      return scraped
-    }))
+      if (scraped !== undefined) {
+        scraped = this.getExtraData(scraped, product)
+        const isIncomplete = (scraped.title === undefined || scraped.brand === undefined || scraped.alcoholic_grade === undefined || scraped.content === undefined || scraped.quantity === undefined || scraped.package === undefined)
 
-    // Filtrar los productos incompletos
-    const incompletely = scrapedProducts.map((s) => {
-      if (s?.url !== undefined && (s.title === undefined || s.brand === undefined || s.alcoholic_grade === undefined || s.content === undefined || s.quantity === undefined || s.package === undefined)) {
-        const productLink = s.url.split('/')[1]
-        const incomplete: Incomplete = {
-          website: this.info.name,
-          product_url: `${this.product_url}/${productLink}`
-        }
-        return incomplete
+        // Separamos entre completo o incompleto
+        if (isIncomplete) incompletesUrls.push(`${this.product_url}/${product.linkText}`)
+        else completeProducts.push(scraped)
       }
-      return undefined
     })
 
-    // Filtrar productos scrapeados correctos
-    const filtered = scrapedProducts.filter((scraped) => {
-      return scraped?.title !== undefined &&
-             scraped.brand !== undefined &&
-             scraped.category !== undefined &&
-             scraped.url !== undefined &&
-             scraped.price !== undefined && scraped.price !== 0 &&
-             scraped.best_price !== undefined && scraped.best_price !== 0 &&
-             scraped.image !== undefined &&
-             scraped.alcoholic_grade !== undefined &&
-             scraped.content !== undefined &&
-             scraped.quantity !== undefined &&
-             scraped.package !== undefined
-    }) as Scraper[]
+    // Completa los productos incompletos y los agrega al array de productos completos
+    completeProducts.push(...(await this.toCompleteData(incompletesUrls)))
 
-    // Obtener los averages de cada producto scrapeado
-    const averages = await this.getAverages(filtered)
-
-    // Por cada producto scrapeado agregar su average
-    const finalProducts = filtered.map((scraped) => {
-      const average = averages?.find(a => a.id === scraped.product_sku)
-      if (average !== undefined && average.totalCount !== 0) {
-        return { ...scraped, average: average?.average }
-      } else if (average !== undefined && average.totalCount === 0) {
-        return { ...scraped, average: null }
-      }
-      return scraped
+    // Filtran todos los productos completos con el fin de que no se generen errores de datos faltantes
+    const filteredProducts = completeProducts.filter((p) => {
+      return p?.title !== undefined &&
+             p.brand !== undefined &&
+             p.category !== undefined &&
+             p.url !== undefined &&
+             p.price !== undefined && p.price !== 0 &&
+             p.best_price !== undefined && p.best_price !== 0 &&
+             p.image !== undefined &&
+             p.alcoholic_grade !== undefined &&
+             p.content !== undefined &&
+             p.quantity !== undefined &&
+             p.package !== undefined
     })
 
-    return [finalProducts, incompletely.filter(i => i !== undefined) as Incomplete[]]
+    // Obtener los averages de ambos arrays
+    const updatingProductsAverage = await this.getUpdateAverages(updatingProducts.filter(u => u !== undefined) as UpdateWebsite[])
+    const completeProductsAverage = await this.getProductAverages(filteredProducts)
+
+    return [updatingProductsAverage, completeProductsAverage]
   }
 
   async getPages (url: string): Promise<string[]> {
-    const { data } = await axios.get<SantaResponse>(`${url}?sc=1`, { headers: this.headers })
+    const { data } = await axios.get<SantaResponse>(`${url}?sc=11`, { headers: this.headers })
     const total = Math.ceil(data.recordsFiltered / 40)
 
     const pages: string[] = []
     for (let i = 1; i <= total; i++) {
-      pages.push(`${url}?sc=1&page=${i}`)
+      pages.push(`${url}?sc=11&page=${i}`)
     }
     return pages
+  }
+
+  getUpdateData (product: SantaProduct): UpdateWebsite | undefined {
+    try {
+      return {
+        product_sku: product.productId,
+        url: `${this.page_url}/${product.linkText}/p`,
+        price: product.items[0].sellers[0].commertialOffer.PriceWithoutDiscount,
+        best_price: product.items[0].sellers[0].commertialOffer.Price
+      }
+    } catch (error) {
+      console.log('Error al obtener los datos para actualizar')
+      return undefined
+    }
   }
 
   getMainData (product: SantaProduct): Scraper | undefined {
@@ -156,13 +129,13 @@ export class SantaSpider implements Spider {
         title: product.productName,
         brand: product.brand,
         category: product.categories[0].split('/')[2],
-        url: `/${product.linkText}/p`,
+        url: `${this.page_url}/${product.linkText}/p`,
         price: product.items[0].sellers[0].commertialOffer.PriceWithoutDiscount,
         best_price: product.items[0].sellers[0].commertialOffer.Price
       }
       return scraped
     } catch (error) {
-      console.log('Error al obtener los datos principales')
+      console.log('Error al obtener los datos principales', error)
       return undefined
     }
   }
@@ -176,8 +149,8 @@ export class SantaSpider implements Spider {
 
       scraped.image = linkParsed
     } catch (error) {
-      scraped.image = undefined
       console.log('Error al obtener las imagenes')
+      scraped.image = undefined
     }
 
     // Quantity
@@ -269,14 +242,82 @@ export class SantaSpider implements Spider {
     return scraped
   }
 
-  async getAverages (products: Scraper[]): Promise<SantaAverage[] | undefined> {
-    const skus = products.map((product) => product.product_sku).join(',')
+  async toCompleteData (incompleteUrls: string[]): Promise<Scraper[]> {
+    // Separar urls en batchs
+    const splitUrls = this.getSplitArray(incompleteUrls, BATCH_SIZE)
+
+    const products: SantaProduct[] = []
+    for (const urls of splitUrls) {
+      // espera x segundos
+      await new Promise(resolve => setTimeout(resolve, SLEEP_TIME))
+
+      // obtiene los productos de cada url
+      const fetchProducts = await Promise.all(urls.map(async (url) => {
+        try {
+          const { data } = await axios.get<SantaProduct[]>(`${url}`, { headers: this.headers })
+          return data[0]
+        } catch (error) {
+          console.log(`Error al hacer fetch: ${url}`)
+        }
+        return undefined
+      }))
+      products.push(...fetchProducts.filter(p => p !== undefined) as SantaProduct[])
+    }
+
+    // Obtener productos scrapeados
+    const scrapedProducts = await Promise.all(products.map(async (product) => {
+      let scraped = this.getMainData(product)
+      if (scraped === undefined) return undefined
+      scraped = this.getExtraData(scraped, product)
+      return scraped
+    }))
+
+    return scrapedProducts.filter(s => s !== undefined) as Scraper[]
+  }
+
+  getSplitArray (arr: string[], size: number): string[][] {
+    const result: string[][] = []
+    for (let i = 0; i < arr.length; i += size) {
+      result.push(arr.slice(i, i + size))
+    }
+    return result
+  }
+
+  async getUpdateAverages (updates: UpdateWebsite[]): Promise<UpdateWebsite[]> {
+    const skus = updates.map(u => u.product_sku).join(',')
     try {
-      const { data } = await axios.get<SantaAverage[]>(`${this.average_url}?ids=${skus}`, { headers: this.headers })
-      return data
+      const { data } = await axios<SantaAverage[]>(`${this.average_url}?ids=${skus}`, { headers: this.headers })
+      return updates.map(u => {
+        const average = data.find(a => a.id === u.product_sku)
+        if (average !== undefined && average.totalCount !== 0) {
+          return { ...u, average: average.average }
+        } else if (average !== undefined && average.totalCount === 0) {
+          return { ...u, average: null }
+        }
+        return u
+      })
     } catch (error) {
-      console.log('Error al obtener los averages')
-      return undefined
+      console.log('Error al obtener los averages para actualizar', error)
+      return updates
+    }
+  }
+
+  async getProductAverages (products: Scraper[]): Promise<Scraper[]> {
+    const skus = products.map(u => u.product_sku).join(',')
+    try {
+      const { data } = await axios<SantaAverage[]>(`${this.average_url}?ids=${skus}`, { headers: this.headers })
+      return products.map(u => {
+        const average = data.find(a => a.id === u.product_sku)
+        if (average !== undefined && average.totalCount !== 0) {
+          return { ...u, average: average.average }
+        } else if (average !== undefined && average.totalCount === 0) {
+          return { ...u, average: null }
+        }
+        return u
+      })
+    } catch (error) {
+      console.log('Error al obtener los averages para actualizar', error)
+      return products
     }
   }
 }

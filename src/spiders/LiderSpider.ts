@@ -1,51 +1,11 @@
 import axios from 'axios'
-import { Incomplete, Info, Scraper, Spider } from '../types'
-
-interface LiderResponse {
-  products: Product[]
-  nbPages: number
-}
-
-interface Product {
-  sku: string
-  brand: string
-  displayName: string
-  images: Images
-  specifications: Specification[]
-  price: Price
-  categorias: string[]
-  available: boolean
-}
-
-interface Images {
-  defaultImage: string
-  smallImage: string
-  mediumImage: string
-  largeImage: string
-}
-
-interface Specification {
-  name: string
-  value: string
-}
-
-interface Price {
-  BasePriceReference: number
-  BasePriceSales: number
-}
-
-interface Body {
-  categories: string
-  page: number
-  facets: string[]
-  sortBy: string
-  hitsPerPage: number
-}
+import { Info, Scraper, UpdateWebsite } from '../types'
+import { LiderBody, LiderProduct, LiderResponse, LiderSpecification, Spider } from './types'
+import { BATCH_SIZE, SLEEP_TIME } from '../config.js'
 
 export class LiderSpider implements Spider {
   info: Info = {
     name: 'Lider',
-    url: 'https://www.lider.cl',
     logo: 'https://www.walmartchile.cl/wp-content/themes/walmartchile/img/favicon-32x32.png'
   }
 
@@ -58,7 +18,7 @@ export class LiderSpider implements Spider {
     'https://apps.lider.cl/supermercado/bff/category'
   ]
 
-  start_bodies: Body[] = [
+  start_bodies: LiderBody[] = [
     {
       categories: 'Bebidas y Licores/Cervezas',
       page: 1,
@@ -82,9 +42,12 @@ export class LiderSpider implements Spider {
     }
   ]
 
+  block_urls: string[] = []
+
+  page_url = 'https://www.lider.cl'
   product_url = 'https://apps.lider.cl/supermercado/bff/products'
 
-  async run (): Promise<[Scraper[], Incomplete[]]> {
+  async run (paths: string[]): Promise<[UpdateWebsite[], Scraper[]]> {
     console.log('Running Lider Spider')
 
     // Obtener todas las paginas por cada body
@@ -98,63 +61,84 @@ export class LiderSpider implements Spider {
       return data.products
     }))).flat()
 
-    // Obtener productos scrapeados
-    const scrapedProducts = await Promise.all(products.map(async (product) => {
-      if (!product.available) return undefined
+    const updatingProducts: Array<UpdateWebsite | undefined> = []
+    const completeProducts: Scraper[] = []
+    const incompletesUrls: string[] = []
+
+    // Recorren los productos y se separan en los distintos arrays
+    products.forEach((product) => {
+      const path = `${this.page_url}/supermercado/product/sku/${product.sku}`
+      // Saltar los productos bloqueados
+      if (this.block_urls.includes(path) || !product.available) return
+
+      // Productos que solo necesitan actualizar precio y average
+      if (paths.includes(path)) {
+        updatingProducts.push(this.getUpdateData(product))
+        return
+      }
+
+      // Obtener toda la data del producto para saber si esta completo o incompleto
       let scraped = this.getMainData(product)
-      if (scraped === undefined) return undefined
-      scraped = this.getExtraData(scraped, product)
-      return scraped
-    }))
+      if (scraped !== undefined) {
+        scraped = this.getExtraData(scraped, product)
+        const isIncomplete = (scraped.title === undefined || scraped.brand === undefined || scraped.alcoholic_grade === undefined || scraped.content === undefined || scraped.quantity === undefined || scraped.package === undefined)
 
-    // Filtrar los productos incompletos
-    const incompletely = scrapedProducts.map((s) => {
-      if (s?.product_sku !== undefined && (s.title === undefined || s.brand === undefined || s.alcoholic_grade === undefined || s.content === undefined || s.quantity === undefined || s.package === undefined)) {
-        const incomplete: Incomplete = {
-          website: this.info.name,
-          product_url: `${this.product_url}/${s.product_sku as string}`
-        }
-        return incomplete
-      }
-      return undefined
-    })
-
-    // Filtrar productos scrapeados correctos
-    const filtered = scrapedProducts.filter((scraped) => {
-      return scraped?.title !== undefined &&
-             scraped.brand !== undefined &&
-             scraped.category !== undefined &&
-             scraped.url !== undefined &&
-             scraped.price !== undefined && scraped.price !== 0 &&
-             scraped.best_price !== undefined && scraped.best_price !== 0 &&
-             scraped.image !== undefined &&
-             scraped.alcoholic_grade !== undefined &&
-             scraped.content !== undefined &&
-             scraped.quantity !== undefined &&
-             scraped.package !== undefined
-    })
-
-    const finalProducts = filtered.map((scraped) => {
-      return {
-        ...scraped,
-        average: null
+        // Separamos entre completo o incompleto
+        if (isIncomplete) incompletesUrls.push(`${this.product_url}/${product.sku}`)
+        else completeProducts.push(scraped)
       }
     })
 
-    return [finalProducts as Scraper[], incompletely.filter(i => i !== undefined) as Incomplete[]]
+    // Completa los productos incompletos y los agrega al array de productos completos
+    completeProducts.push(...(await this.toCompleteData(incompletesUrls)))
+
+    // Filtran todos los productos completos con el fin de que no se generen errores de datos faltantes
+    const filteredProducts = completeProducts.filter((p) => {
+      return p?.title !== undefined &&
+             p.brand !== undefined &&
+             p.category !== undefined &&
+             p.url !== undefined &&
+             p.price !== undefined && p.price !== 0 &&
+             p.best_price !== undefined && p.best_price !== 0 &&
+             p.image !== undefined &&
+             p.alcoholic_grade !== undefined &&
+             p.content !== undefined &&
+             p.quantity !== undefined &&
+             p.package !== undefined
+    })
+
+    // Obtener los averages de ambos arrays
+    const updatingProductsAverage = updatingProducts.filter(u => u !== undefined).map(u => { return { ...u, average: null } }) as UpdateWebsite[]
+    const completeProductsAverage = filteredProducts.map(p => { return { ...p, average: null } }) as Scraper[]
+
+    return [updatingProductsAverage, completeProductsAverage]
   }
 
-  async getBodies (body: Body): Promise<Body[]> {
+  async getBodies (body: LiderBody): Promise<LiderBody[]> {
     const { data } = await axios.post<LiderResponse>(`${this.start_urls[0]}`, body, { headers: this.headers })
 
-    const bodies: Body[] = []
+    const bodies: LiderBody[] = []
     for (let i = 1; i <= data.nbPages; i++) {
       bodies.push({ ...body, page: i })
     }
     return bodies
   }
 
-  getMainData (product: Product): Scraper | undefined {
+  getUpdateData (product: LiderProduct): UpdateWebsite | undefined {
+    try {
+      return {
+        product_sku: product.sku,
+        url: `${this.page_url}/supermercado/product/sku/${product.sku}`,
+        price: product.price.BasePriceReference,
+        best_price: product.price.BasePriceSales
+      }
+    } catch (error) {
+      console.log('Error al obtener los datos para actualizar')
+      return undefined
+    }
+  }
+
+  getMainData (product: LiderProduct): Scraper | undefined {
     try {
       const scraped: Scraper = {
         website: this.info.name,
@@ -162,7 +146,7 @@ export class LiderSpider implements Spider {
         title: product.displayName,
         brand: product.brand,
         category: this.getCategory(product.categorias),
-        url: `/supermercado/product/sku/${product.sku}`,
+        url: `${this.page_url}/supermercado/product/sku/${product.sku}`,
         price: product.price.BasePriceReference,
         best_price: product.price.BasePriceSales
       }
@@ -182,7 +166,7 @@ export class LiderSpider implements Spider {
     return ''
   }
 
-  getExtraData (scraped: Scraper, product: Product): Scraper {
+  getExtraData (scraped: Scraper, product: LiderProduct): Scraper {
     // Images
     try {
       scraped.image = product.images.defaultImage.replace('&scale=size[180x180]', '')
@@ -240,10 +224,51 @@ export class LiderSpider implements Spider {
     return scraped
   }
 
-  getEspecification (specifications: Specification[], name: string): string | undefined {
+  getEspecification (specifications: LiderSpecification[], name: string): string | undefined {
     for (const specification of specifications) {
       if (specification.name === name) return specification.value
     }
     return undefined
+  }
+
+  async toCompleteData (incompleteUrls: string[]): Promise<Scraper[]> {
+    // Separar urls en batchs
+    const splitUrls = this.getSplitArray(incompleteUrls, BATCH_SIZE)
+
+    const products: LiderProduct[] = []
+    for (const urls of splitUrls) {
+      // espera x segundos
+      await new Promise(resolve => setTimeout(resolve, SLEEP_TIME))
+
+      // obtiene los productos de cada url
+      const fetchProducts = await Promise.all(urls.map(async (url) => {
+        try {
+          const { data } = await axios.get<LiderProduct[]>(`${url}`, { headers: this.headers })
+          return data[0]
+        } catch (error) {
+          console.log(`Error al hacer fetch: ${url}`)
+        }
+        return undefined
+      }))
+      products.push(...fetchProducts.filter(p => p !== undefined) as LiderProduct[])
+    }
+
+    // Obtener productos scrapeados
+    const scrapedProducts = await Promise.all(products.map(async (product) => {
+      let scraped = this.getMainData(product)
+      if (scraped === undefined) return undefined
+      scraped = this.getExtraData(scraped, product)
+      return scraped
+    }))
+
+    return scrapedProducts.filter(s => s !== undefined) as Scraper[]
+  }
+
+  getSplitArray (arr: string[], size: number): string[][] {
+    const result: string[][] = []
+    for (let i = 0; i < arr.length; i += size) {
+      result.push(arr.slice(i, i + size))
+    }
+    return result
   }
 }

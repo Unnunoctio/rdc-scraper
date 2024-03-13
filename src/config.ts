@@ -1,0 +1,9 @@
+export const DRINKS_API = process.env.DRINKS_API
+export const DB_URI = process.env.DB_URI
+export const RESEND_KEY = process.env.RESEND_API_KEY
+export const CLOUDINARY_NAME = process.env.CLOUDINARY_NAME
+export const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY
+export const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_SECRET_KEY
+export const ENVIRONMENT = process.env.NODE_ENV
+export const SLEEP_TIME = Number(process.env.SLEEP_TIME) ?? 5000
+export const BATCH_SIZE = Number(process.env.BATCH_SIZE) ?? 200

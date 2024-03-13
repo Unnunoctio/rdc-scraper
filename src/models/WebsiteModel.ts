@@ -3,7 +3,7 @@ import { Website } from '../types'
 
 const WebsiteSchema = new Schema<Website>({
   info: { type: Schema.Types.ObjectId, ref: 'Info' },
-  path: { type: String, required: true },
+  path: { type: String, required: true, unique: true },
   price: { type: Number, required: true },
   best_price: { type: Number, required: true },
   average: { type: Number },

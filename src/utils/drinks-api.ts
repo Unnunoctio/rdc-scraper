@@ -1,8 +1,9 @@
 import axios from 'axios'
 import { Drink } from '../types'
+import { DRINKS_API } from '../config.js'
 
 export const getDrinksApi = async (): Promise<Drink[]> => {
-  const drinksUrl = process.env.DRINKS_API as string
+  const drinksUrl = DRINKS_API as string
   const pages = [`${drinksUrl}&category=Cervezas`, `${drinksUrl}&category=Destilados`, `${drinksUrl}&category=Vinos`]
 
   try {
