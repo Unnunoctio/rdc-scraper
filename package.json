@@ -1,6 +1,6 @@
 {
   "name": "rdc-scraper",
-  "version": "1.0.2",
+  "version": "2.0.0",
   "type": "module",
   "main": "index.js",
   "repository": "https://github.com/Unnunoctio/RDC-Scraper.git",
@@ -34,7 +34,7 @@
   "scripts": {
     "compile": "tsc",
     "build": "npx tsc",
-    "start": "node ./dist/src/index.js",
-    "dev": "npm run compile && node ./dist/src/index.js"
+    "start": "node ./dist/index.js",
+    "dev": "npm run compile && node ./dist/index.js"
   }
 }

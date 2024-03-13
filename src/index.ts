@@ -4,6 +4,7 @@ import mongoose from 'mongoose'
 import schedule from 'node-schedule'
 import { v2 as cloudinary } from 'cloudinary'
 import { runSpiders } from './spiders/run-spiders.js'
+import { sendEmail } from './utils/emails.js'
 
 console.log('Starting App')
 console.log('Environment:', ENVIRONMENT)
@@ -23,17 +24,26 @@ cloudinary.config({
 // Scraping function
 const firstScraping = async (): Promise<void> => {
   console.log('------------------ first scraping ------------------')
-  await runSpiders()
+  const notFound = await runSpiders()
+  if (ENVIRONMENT === 'PRODUCTION') {
+    await sendEmail(notFound)
+  }
   console.log('-------------- first scraping finished -------------')
 }
 
 const morningScraping = async (): Promise<void> => {
   console.log('------------------ scraping 8 am -------------------')
+  await runSpiders()
   console.log('----------------- scraping finised -----------------')
 }
 
 const afternoonScraping = async (): Promise<void> => {
   console.log('------------------ scraping 2 pm -------------------')
+  const notFound = await runSpiders()
+  // Si es sabado - enviar un correo electronico
+  if (new Date().getDay() === 6) {
+    await sendEmail(notFound)
+  }
   console.log('----------------- scraping finised -----------------')
 }
 
