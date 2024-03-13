@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { Info, Scraper, UpdateWebsite } from '../types'
 import { LiderBody, LiderProduct, LiderResponse, LiderSpecification, Spider } from './types'
-import { BATCH_SIZE, SLEEP_TIME } from '../config'
+import { BATCH_SIZE, SLEEP_TIME } from '../config.js'
 
 export class LiderSpider implements Spider {
   info: Info = {
