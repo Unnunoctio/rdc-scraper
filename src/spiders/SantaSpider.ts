@@ -25,7 +25,7 @@ export class SantaSpider implements Spider {
     'https://santaisabel.cl/cerveza-torobayo-botella-330-cc-263611/p'
   ]
 
-  page_url = 'https://santaisabel.cl'
+  page_url = 'https://www.santaisabel.cl'
   average_url = 'https://sm-web-api.ecomm.cencosud.com/catalog/api/v1/reviews/ratings'
   product_url = 'https://sm-web-api.ecomm.cencosud.com/catalog/api/v1/pedrofontova/product'
 

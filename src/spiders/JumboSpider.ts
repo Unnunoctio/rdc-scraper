@@ -23,7 +23,7 @@ export class JumboSpider implements Spider {
     'https://jumbo.cl/cerveza-kunstmann-botella-330-cc-torobayo-nacional/p'
   ]
 
-  page_url = 'https://jumbo.cl'
+  page_url = 'https://www.jumbo.cl'
   average_url = 'https://sm-web-api.ecomm.cencosud.com/catalog/api/v1/reviews/ratings'
   product_url = 'https://sm-web-api.ecomm.cencosud.com/catalog/api/v1/product'
 
