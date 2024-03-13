@@ -5,6 +5,7 @@ import { saveManyDrinks, saveManyProducts } from '../utils/db-save.js'
 import { updateManyWebsites, updateManyWebsitesWithoutStock } from '../utils/db-update.js'
 import { getDrinksApi } from '../utils/drinks-api.js'
 import { JumboSpider } from './JumboSpider.js'
+import { LiderSpider } from './LiderSpider.js'
 import { SantaSpider } from './SantaSpider.js'
 
 export const runSpiders = async (): Promise<Scraper[]> => {
@@ -36,6 +37,16 @@ export const runSpiders = async (): Promise<Scraper[]> => {
   console.timeEnd('Santa Scraping')
   console.log('----------------------------------------')
   notFoundProducts.push(...santaNotFound)
+
+  // lider
+  console.time('Lider Scraping')
+  const liderSpider = new LiderSpider()
+  const [liderUpdating, liderScraped] = await liderSpider.run(allPaths)
+  await updateManyWebsites(liderUpdating, watcher)
+  const liderNotFound = await saveManyProducts(liderScraped, drinks, liderSpider.info, watcher)
+  console.timeEnd('Lider Scraping')
+  console.log('----------------------------------------')
+  notFoundProducts.push(...liderNotFound)
 
   // actualizan todos los productos sin stock y se eliminan los drinks que no esten en ningun producto
   await updateManyWebsitesWithoutStock(watcher)
