@@ -108,7 +108,7 @@ export class LiderSpider implements Spider {
     })
 
     // Obtener los averages de ambos arrays
-    const updatingProductsAverage = updatingProducts.filter(u => u !== undefined).map(u => { return { ...u, average: null } }) as UpdateWebsite[]
+    const updatingProductsAverage = updatingProducts.filter(u => u !== undefined && u.best_price !== 0 && u.price !== 0).map(u => { return { ...u, average: null } }) as UpdateWebsite[]
     const completeProductsAverage = filteredProducts.map(p => { return { ...p, average: null } }) as Scraper[]
 
     return [updatingProductsAverage, completeProductsAverage]

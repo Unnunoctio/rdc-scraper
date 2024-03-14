@@ -90,7 +90,7 @@ export class SantaSpider implements Spider {
     })
 
     // Obtener los averages de ambos arrays
-    const updatingProductsAverage = await this.getUpdateAverages(updatingProducts.filter(u => u !== undefined) as UpdateWebsite[])
+    const updatingProductsAverage = await this.getUpdateAverages(updatingProducts.filter(u => u !== undefined && u.best_price !== 0 && u.price !== 0) as UpdateWebsite[])
     const completeProductsAverage = await this.getProductAverages(filteredProducts)
 
     return [updatingProductsAverage, completeProductsAverage]
