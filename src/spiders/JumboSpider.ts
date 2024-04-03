@@ -20,7 +20,7 @@ export class JumboSpider implements Spider {
   ]
 
   block_urls: string[] = [
-    'https://jumbo.cl/cerveza-kunstmann-botella-330-cc-torobayo-nacional/p'
+    'https://www.jumbo.cl/cerveza-kunstmann-botella-330-cc-torobayo-nacional/p'
   ]
 
   page_url = 'https://www.jumbo.cl'
@@ -177,25 +177,12 @@ export class JumboSpider implements Spider {
       const match = product['Graduación Alcohólica'][0].match(/(\d+(?:\.\d+)?)°/)
       scraped.alcoholic_grade = (match != null) ? Number(match[1]) : undefined
     }
-    if (product.Grado !== undefined && scraped.alcoholic_grade === undefined) {
-      let match = product.Grado[0].match(/(\d+(?:\.\d+)?)°/)
-      if (match === null) match = product.Grado[0].match(/(\d+(?:\.\d+)?)%/)
-      scraped.alcoholic_grade = (match != null) ? Number(match[1]) : undefined
-    }
     if (product.productName.includes('°') && scraped.alcoholic_grade === undefined) {
       const match = product.productName.match(/(\d+(?:\.\d+)?)°/)
       scraped.alcoholic_grade = (match != null) ? Number(match[1]) : undefined
     }
 
     // Content
-    if (product.Contenido !== undefined) {
-      const match = product.Contenido[0].match(/(\d+(\.\d+)?)\s*(cc|ml|L|l|litro|litros?)/i)
-      if (match !== null) {
-        const amount = Number(match[1])
-        const unit = match[3].toLowerCase()
-        scraped.content = (unit === 'l' || unit === 'litro' || unit === 'litros') ? amount * 1000 : amount
-      }
-    }
     if (scraped.content === undefined) {
       const match = product.productName.match(/(\d+(?:\.\d+)?) (cc|L)/i)
       if (match !== null) {
