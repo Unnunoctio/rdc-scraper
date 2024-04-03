@@ -3,8 +3,15 @@ import { RecordModel, WebsiteModel } from '../models/index.js'
 import { RecordDB, UpdateWebsite, WebsiteDB } from '../types'
 import { ENVIRONMENT } from '../config.js'
 
-const saveRecord = async (lastRecordId: ObjectId, price: number): Promise<RecordDB | undefined> => {
+const saveRecord = async (lastRecordId: ObjectId | undefined, price: number): Promise<RecordDB | undefined> => {
   try {
+    if (lastRecordId === undefined) {
+      const currentDate = new Date()
+      currentDate.setHours(0, 0, 0, 0)
+
+      return await RecordModel.create<RecordDB>({ date: currentDate, price })
+    }
+
     const record = await RecordModel.findById<RecordDB>(lastRecordId)
     if (record === null) throw new Error('Record not found')
 
