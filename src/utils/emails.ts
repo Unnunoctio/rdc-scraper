@@ -1,9 +1,9 @@
 import { Resend } from 'resend'
-import { Scraper } from '../types'
 import { createExcel } from './files.js'
 import { RESEND_KEY } from '../config.js'
+import { ScraperClass } from '../classes/ScraperClass.js'
 
-export const sendEmail = async (notFound: Scraper[]): Promise<void> => {
+export const sendEmail = async (notFound: ScraperClass[]): Promise<void> => {
   const beersFile = await createExcel(notFound.filter(product => product.category === 'Cervezas'), 'Not-Found-Beers')
   const winesFile = await createExcel(notFound.filter(product => product.category === 'Vinos'), 'Not-Found-Wines')
   const spiritsFile = await createExcel(notFound.filter(product => product.category === 'Destilados'), 'Not-Found-Spirits')

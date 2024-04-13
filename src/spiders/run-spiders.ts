@@ -1,4 +1,4 @@
-import { Scraper } from '../types'
+import { ScraperClass } from '../classes/ScraperClass'
 import { deleteManyDrinks } from '../utils/db-delete.js'
 import { getAllPathWebsites } from '../utils/db-get.js'
 import { saveManyDrinks, saveManyProducts } from '../utils/db-save.js'
@@ -8,7 +8,7 @@ import { JumboSpider } from './JumboSpider.js'
 import { LiderSpider } from './LiderSpider.js'
 import { SantaSpider } from './SantaSpider.js'
 
-export const runSpiders = async (): Promise<Scraper[]> => {
+export const runSpiders = async (): Promise<ScraperClass[]> => {
   // obtener los drinks api, todos los paths y guardar los drinks into de db
   const drinksApi = await getDrinksApi()
   const allPaths = await getAllPathWebsites()
@@ -16,41 +16,41 @@ export const runSpiders = async (): Promise<Scraper[]> => {
 
   // inicializa el watcher y el array de productos no encontrados
   const watcher = new Date().getTime()
-  const notFoundProducts: Scraper[] = []
+  const notFound: ScraperClass[] = []
 
-  // jumbo
+  //! jumbo
   console.time('Jumbo Scraping')
   const jumboSpider = new JumboSpider()
-  const [jumboUpdating, jumboScraped] = await jumboSpider.run(allPaths)
-  await updateManyWebsites(jumboUpdating, watcher)
+  const [jumboUpdated, jumboScraped] = await jumboSpider.run(allPaths)
+  await updateManyWebsites(jumboUpdated, watcher)
   const jumboNotFound = await saveManyProducts(jumboScraped, drinks, jumboSpider.info, watcher)
   console.timeEnd('Jumbo Scraping')
   console.log('----------------------------------------')
-  notFoundProducts.push(...jumboNotFound)
+  notFound.push(...jumboNotFound)
 
-  // santa
+  //! santa
   console.time('Santa Scraping')
   const santaSpider = new SantaSpider()
-  const [santaUpdating, santaScraped] = await santaSpider.run(allPaths)
-  await updateManyWebsites(santaUpdating, watcher)
+  const [santaUpdated, santaScraped] = await santaSpider.run(allPaths)
+  await updateManyWebsites(santaUpdated, watcher)
   const santaNotFound = await saveManyProducts(santaScraped, drinks, santaSpider.info, watcher)
   console.timeEnd('Santa Scraping')
   console.log('----------------------------------------')
-  notFoundProducts.push(...santaNotFound)
+  notFound.push(...santaNotFound)
 
-  // lider
+  //! lider
   console.time('Lider Scraping')
   const liderSpider = new LiderSpider()
-  const [liderUpdating, liderScraped] = await liderSpider.run(allPaths)
-  await updateManyWebsites(liderUpdating, watcher)
+  const [liderUpdated, liderScraped] = await liderSpider.run(allPaths)
+  await updateManyWebsites(liderUpdated, watcher)
   const liderNotFound = await saveManyProducts(liderScraped, drinks, liderSpider.info, watcher)
   console.timeEnd('Lider Scraping')
   console.log('----------------------------------------')
-  notFoundProducts.push(...liderNotFound)
+  notFound.push(...liderNotFound)
 
   // actualizan todos los productos sin stock y se eliminan los drinks que no esten en ningun producto
   await updateManyWebsitesWithoutStock(watcher)
   await deleteManyDrinks()
 
-  return notFoundProducts
+  return notFound
 }

@@ -1,4 +1,6 @@
-import { Info, Scraper, UpdateWebsite } from '../types'
+import { ScraperClass } from '../classes/ScraperClass'
+import { UpdaterClass } from '../classes/UpdaterClass'
+import { Info } from '../types'
 
 // SPIDER
 export interface Spider {
@@ -6,24 +8,24 @@ export interface Spider {
   headers: { [key: string]: string }
   start_urls: string[]
 
-  run: (paths: string[]) => Promise<[UpdateWebsite[], Scraper[]]>
+  run: (paths: string[]) => Promise<[UpdaterClass[], ScraperClass[]]>
 }
 
-// JUMBO
-export interface JumboResponse {
+// CENCOSUD (Jumbo y Santa Isabel)
+export interface CencosudResponse {
   redirect: null
-  products: JumboProduct[]
+  products: CencosudProduct[]
   recordsFiltered: number
   operator: string
 }
 
-export interface JumboProduct {
+export interface CencosudProduct {
   productId: string
   productName: string
   brand: string
   categories: string[]
   linkText: string
-  items: JumboItem[]
+  items: CencosudItem[]
   'Graduación Alcohólica'?: string[]
   Grado?: string[]
   Envase?: string[]
@@ -31,17 +33,17 @@ export interface JumboProduct {
   Contenido?: string[]
 }
 
-export interface JumboItem {
-  images: JumboImage[]
-  sellers: JumboSeller[]
+export interface CencosudItem {
+  images: CencosudImage[]
+  sellers: CencosudSeller[]
 }
 
-export interface JumboImage {
+export interface CencosudImage {
   imageUrl: string
   imageTag: string
 }
 
-export interface JumboSeller {
+export interface CencosudSeller {
   commertialOffer: {
     Price: number
     ListPrice: number
@@ -50,54 +52,7 @@ export interface JumboSeller {
   }
 }
 
-export interface JumboAverage {
-  average: number
-  totalCount: number
-  id: string
-}
-
-// SANTA
-export interface SantaResponse {
-  redirect: null
-  products: SantaProduct[]
-  recordsFiltered: number
-  operator: string
-}
-
-export interface SantaProduct {
-  productId: string
-  productName: string
-  brand: string
-  categories: string[]
-  linkText: string
-  items: SantaItem[]
-  'Graduación Alcohólica'?: string[]
-  Grado?: string[]
-  Envase?: string[]
-  Cantidad?: string[]
-  Contenido?: string[]
-}
-
-export interface SantaItem {
-  images: SantaImage[]
-  sellers: SantaSeller[]
-}
-
-export interface SantaImage {
-  imageUrl: string
-  imageTag: string
-}
-
-export interface SantaSeller {
-  commertialOffer: {
-    Price: number
-    ListPrice: number
-    PriceWithoutDiscount: number
-    AvailableQuantity: number
-  }
-}
-
-export interface SantaAverage {
+export interface CencosudAverage {
   average: number
   totalCount: number
   id: string

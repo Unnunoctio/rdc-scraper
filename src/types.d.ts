@@ -64,32 +64,6 @@ export interface Product {
   websites: ObjectId[]
 }
 
-// SCRAPER
-export interface Scraper {
-  website: string
-  product_sku: any
-  title: string
-  brand: string
-  category: string
-  url: string
-  price: number
-  best_price: number
-  image?: string
-  average?: number | null
-  alcoholic_grade?: number
-  content?: number
-  quantity?: number
-  package?: string
-}
-
-export interface UpdateWebsite {
-  product_sku: any
-  url: string
-  price: number
-  best_price: number
-  average?: number | null
-}
-
 // FILES
 export interface ExcelFile {
   filename: string
