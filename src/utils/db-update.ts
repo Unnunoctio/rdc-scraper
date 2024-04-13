@@ -1,7 +1,8 @@
 import { ObjectId } from 'mongoose'
 import { RecordModel, WebsiteModel } from '../models/index.js'
-import { RecordDB, UpdateWebsite, WebsiteDB } from '../types'
+import { RecordDB, WebsiteDB } from '../types'
 import { ENVIRONMENT } from '../config.js'
+import { UpdaterClass } from '../classes/UpdaterClass.js'
 
 const saveRecord = async (lastRecordId: ObjectId | undefined, price: number): Promise<RecordDB | undefined> => {
   try {
@@ -30,7 +31,7 @@ const saveRecord = async (lastRecordId: ObjectId | undefined, price: number): Pr
   }
 }
 
-export const updateManyWebsites = async (updates: UpdateWebsite[], watcher: number): Promise<void> => {
+export const updateManyWebsites = async (updates: UpdaterClass[], watcher: number): Promise<void> => {
   await Promise.all(updates.map(async (update) => {
     try {
       const website = await WebsiteModel.findOne<WebsiteDB>({ path: update.url })
@@ -43,7 +44,7 @@ export const updateManyWebsites = async (updates: UpdateWebsite[], watcher: numb
         )
       }
 
-      const record = await saveRecord(website.records[website.records.length - 1], update.best_price)
+      const record = await saveRecord(website.records[website.records.length - 1], update.best_price as number)
       if (record === undefined) {
         return await WebsiteModel.findByIdAndUpdate<WebsiteDB>(
           website._id,

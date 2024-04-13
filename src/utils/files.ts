@@ -1,13 +1,14 @@
-import { ExcelFile, Scraper } from '../types'
+import { ScraperClass } from '../classes/ScraperClass'
+import { ExcelFile } from '../types'
 import Excel from 'exceljs'
 
-export const createExcel = async (products: Scraper[], title: string): Promise<ExcelFile> => {
+export const createExcel = async (products: ScraperClass[], title: string): Promise<ExcelFile> => {
   // Crear Excel
   const filename = `${title}.xlsx`
   const workbook = new Excel.Workbook()
 
   const productsByBrand = products.reduce((acc, product) => {
-    const brand = product.brand.toLowerCase().replaceAll('/', '-')
+    const brand = product.brand?.toLowerCase().replaceAll('/', '-') as string
     // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
     if (!(acc[brand])) acc[brand] = []
     acc[brand].push(product)

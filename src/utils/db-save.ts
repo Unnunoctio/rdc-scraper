@@ -1,8 +1,9 @@
 import { ObjectId } from 'mongoose'
 import { DrinkModel, ImageModel, InfoModel, ProductModel, RecordModel, WebsiteModel } from '../models/index.js'
-import { Drink, DrinkDB, ImageDB, Info, InfoDB, ProductDB, RecordDB, Scraper, WebsiteDB } from '../types'
+import { Drink, DrinkDB, ImageDB, Info, InfoDB, ProductDB, RecordDB, WebsiteDB } from '../types'
 import { ENVIRONMENT } from '../config.js'
 import { uploadImages } from './images.js'
+import { ScraperClass } from '../classes/ScraperClass.js'
 
 const getInfo = async (info: Info): Promise<InfoDB | undefined> => {
   try {
@@ -16,7 +17,7 @@ const getInfo = async (info: Info): Promise<InfoDB | undefined> => {
   }
 }
 
-const getDrink = (product: Scraper, drinks: DrinkDB[]): DrinkDB | undefined => {
+const getDrink = (product: ScraperClass, drinks: DrinkDB[]): DrinkDB | undefined => {
   try {
     const drinkOptions = drinks.filter(d => d.brand === product.brand && d.content === product.content && d.package === product.package && d.alcoholic_grade === product.alcoholic_grade)
     if (drinkOptions.length === 0) return undefined
@@ -24,7 +25,7 @@ const getDrink = (product: Scraper, drinks: DrinkDB[]): DrinkDB | undefined => {
     let selectedDrink: DrinkDB | undefined
     let matchingWords: number = -1
 
-    const titleSplit = product.title.toLowerCase().split(' ').filter(word => word !== '')
+    const titleSplit = product.title?.toLowerCase().split(' ').filter(word => word !== '') as string[]
 
     drinkOptions.forEach(option => {
       const nameSplit = option.name.toLowerCase().replace(`${option.brand.toLowerCase()}`, '').split(' ').filter(word => word !== '')
@@ -54,7 +55,7 @@ const saveDrink = async (drink: Drink): Promise<void> => {
   }
 }
 
-const saveWebsite = async (product: Scraper, infoId: ObjectId, watcher: number): Promise<WebsiteDB | undefined> => {
+const saveWebsite = async (product: ScraperClass, infoId: ObjectId, watcher: number): Promise<WebsiteDB | undefined> => {
   try {
     const websiteDB = await WebsiteModel.create({
       info: infoId,
@@ -71,7 +72,7 @@ const saveWebsite = async (product: Scraper, infoId: ObjectId, watcher: number):
 
     const currentDate = new Date()
     currentDate.setHours(0, 0, 0, 0)
-    const newRecord = await RecordModel.create<RecordDB>({ date: currentDate, price: product.best_price })
+    const newRecord = await RecordModel.create<RecordDB>({ date: currentDate, price: product.best_price as number })
 
     const updated = await WebsiteModel.findByIdAndUpdate<WebsiteDB>(websiteDB._id, { $push: { records: newRecord._id } })
     if (updated === null) return undefined
@@ -101,7 +102,7 @@ const generateSku = async (): Promise<number> => {
   }
 }
 
-export const saveManyProducts = async (products: Scraper[], drinks: DrinkDB[], info: Info, watcher: number): Promise<Scraper[]> => {
+export const saveManyProducts = async (products: ScraperClass[], drinks: DrinkDB[], info: Info, watcher: number): Promise<ScraperClass[]> => {
   const infoDB = await getInfo(info)
   if (infoDB === undefined) return []
 
@@ -128,7 +129,7 @@ export const saveManyProducts = async (products: Scraper[], drinks: DrinkDB[], i
           //   }
           // }
 
-          const newImages = await saveImage(p.image as string, p.category, p.brand, newProduct.sku)
+          const newImages = await saveImage(p.image as string, p.category as string, p.brand as string, newProduct.sku)
 
           if (newWebsite !== undefined && newImages !== undefined) {
             await ProductModel.findByIdAndUpdate(newProduct._id, { images: newImages._id, $push: { websites: newWebsite._id } })
@@ -148,7 +149,7 @@ export const saveManyProducts = async (products: Scraper[], drinks: DrinkDB[], i
     }
   }))
 
-  return notFound.filter(p => p !== undefined) as Scraper[]
+  return notFound.filter(p => p !== undefined) as ScraperClass[]
 }
 
 export const saveManyDrinks = async (drinks: Drink[]): Promise<DrinkDB[]> => {
