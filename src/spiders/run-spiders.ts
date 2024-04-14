@@ -3,14 +3,12 @@ import { deleteManyDrinks } from '../utils/db-delete.js'
 import { getAllPathWebsites } from '../utils/db-get.js'
 import { saveManyDrinks, saveManyProducts } from '../utils/db-save.js'
 import { updateManyWebsites, updateManyWebsitesWithoutStock } from '../utils/db-update.js'
-import { getDrinksApi } from '../utils/drinks-api.js'
 import { JumboSpider, LiderSpider, SantaSpider } from './index.js'
 
 export const runSpiders = async (): Promise<ScraperClass[]> => {
-  // obtener los drinks api, todos los paths y guardar los drinks into de db
-  const drinksApi = await getDrinksApi()
+  // obtener todos los paths y guardar los drinks into de db
   const allPaths = await getAllPathWebsites()
-  const drinks = await saveManyDrinks(drinksApi)
+  const drinks = await saveManyDrinks()
 
   // inicializa el watcher y el array de productos no encontrados
   const watcher = new Date().getTime()

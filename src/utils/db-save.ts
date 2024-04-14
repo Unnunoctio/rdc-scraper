@@ -4,6 +4,7 @@ import { Drink, DrinkDB, ImageDB, Info, InfoDB, ProductDB, RecordDB, WebsiteDB }
 import { ENVIRONMENT } from '../config.js'
 import { uploadImages } from './images.js'
 import { ScraperClass } from '../classes/ScraperClass.js'
+import { getDrinksApi } from './drinks-api.js'
 
 const getInfo = async (info: Info): Promise<InfoDB | undefined> => {
   try {
@@ -152,8 +153,10 @@ export const saveManyProducts = async (products: ScraperClass[], drinks: DrinkDB
   return notFound.filter(p => p !== undefined) as ScraperClass[]
 }
 
-export const saveManyDrinks = async (drinks: Drink[]): Promise<DrinkDB[]> => {
-  await Promise.all(drinks.map(async (d) => {
+export const saveManyDrinks = async (): Promise<DrinkDB[]> => {
+  const drinksApi = await getDrinksApi()
+
+  await Promise.all(drinksApi.map(async (d) => {
     await saveDrink(d)
   }))
 
