@@ -1,18 +1,13 @@
 import 'dotenv/config.js'
-import { CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET, CLOUDINARY_NAME, DB_URI, ENVIRONMENT } from './config.js'
-import mongoose from 'mongoose'
+import { CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET, CLOUDINARY_NAME, ENVIRONMENT } from './config.js'
 import schedule from 'node-schedule'
 import { v2 as cloudinary } from 'cloudinary'
 import { runSpiders } from './spiders/index.js'
 import { sendEmail } from './utils/emails.js'
+import { dbConnect, dbDisconnect } from './utils/db.js'
 
 console.log('Starting App')
 console.log('Environment:', ENVIRONMENT)
-
-// Connect to MongoDB
-mongoose.connect(DB_URI as string)
-  .then(() => console.log('Connected to Database'))
-  .catch(err => console.error(err))
 
 // Connect to Cloudinary
 cloudinary.config({
@@ -24,26 +19,50 @@ cloudinary.config({
 // Scraping function
 const firstScraping = async (): Promise<void> => {
   console.log('------------------ first scraping ------------------')
+  const isConnected = await dbConnect()
+  if (!isConnected) {
+    console.error('Error connecting to database')
+    return
+  }
+
   const notFound = await runSpiders()
   if (ENVIRONMENT === 'PRODUCTION') {
     await sendEmail(notFound)
   }
+
+  await dbDisconnect()
   console.log('-------------- first scraping finished -------------')
 }
 
 const morningScraping = async (): Promise<void> => {
   console.log('------------------ scraping 8 am -------------------')
+  const isConnected = await dbConnect()
+  if (!isConnected) {
+    console.error('Error connecting to database')
+    return
+  }
+
   await runSpiders()
+
+  await dbDisconnect()
   console.log('----------------- scraping finised -----------------')
 }
 
 const afternoonScraping = async (): Promise<void> => {
   console.log('------------------ scraping 2 pm -------------------')
+  const isConnected = await dbConnect()
+  if (!isConnected) {
+    console.error('Error connecting to database')
+    return
+  }
+
   const notFound = await runSpiders()
   // Si es sabado - enviar un correo electronico
   if (new Date().getDay() === 6) {
     await sendEmail(notFound)
   }
+
+  await dbDisconnect()
   console.log('----------------- scraping finised -----------------')
 }
 
