@@ -1,9 +1,8 @@
 import axios from 'axios'
 import { Info } from '../types'
 import { CencosudAverage, CencosudProduct, CencosudResponse, Spider } from './types'
-import { ScraperClass } from '../classes/ScraperClass.js'
-import { UpdaterClass } from '../classes/UpdaterClass.js'
 import { BATCH_SIZE, SLEEP_TIME } from '../config.js'
+import { ScraperClass, UpdaterClass } from '../classes/index.js'
 
 export class SantaSpider implements Spider {
   info: Info = {

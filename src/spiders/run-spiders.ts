@@ -4,9 +4,7 @@ import { getAllPathWebsites } from '../utils/db-get.js'
 import { saveManyDrinks, saveManyProducts } from '../utils/db-save.js'
 import { updateManyWebsites, updateManyWebsitesWithoutStock } from '../utils/db-update.js'
 import { getDrinksApi } from '../utils/drinks-api.js'
-import { JumboSpider } from './JumboSpider.js'
-import { LiderSpider } from './LiderSpider.js'
-import { SantaSpider } from './SantaSpider.js'
+import { JumboSpider, LiderSpider, SantaSpider } from './index.js'
 
 export const runSpiders = async (): Promise<ScraperClass[]> => {
   // obtener los drinks api, todos los paths y guardar los drinks into de db

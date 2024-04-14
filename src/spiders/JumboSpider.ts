@@ -1,9 +1,8 @@
 import axios from 'axios'
 import { Info } from '../types'
 import { CencosudAverage, CencosudProduct, CencosudResponse, Spider } from './types'
-import { ScraperClass } from '../classes/ScraperClass.js'
-import { UpdaterClass } from '../classes/UpdaterClass.js'
 import { BATCH_SIZE, SLEEP_TIME } from '../config.js'
+import { ScraperClass, UpdaterClass } from '../classes/index.js'
 
 export class JumboSpider implements Spider {
   info: Info = {
@@ -123,7 +122,7 @@ export class JumboSpider implements Spider {
   }
 
   async getAverages (items: UpdaterClass[] | ScraperClass[]): Promise<void> {
-    const skus = items.map(i => i.product_sku).join(',')
+    const skus = items.map((i: any) => i.product_sku).join(',')
     try {
       const { data } = await axios<CencosudAverage[]>(`${this.average_url}?ids=${skus}`, { headers: this.headers })
       for (const item of items) {

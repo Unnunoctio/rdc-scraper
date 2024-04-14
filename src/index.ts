@@ -3,7 +3,7 @@ import { CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET, CLOUDINARY_NAME, DB_URI, ENV
 import mongoose from 'mongoose'
 import schedule from 'node-schedule'
 import { v2 as cloudinary } from 'cloudinary'
-import { runSpiders } from './spiders/run-spiders.js'
+import { runSpiders } from './spiders/index.js'
 import { sendEmail } from './utils/emails.js'
 
 console.log('Starting App')
