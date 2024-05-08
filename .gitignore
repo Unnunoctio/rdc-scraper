@@ -1,6 +1,9 @@
 # js
 *.js
 
+# Files
+deprecated
+
 # Logs
 logs
 *.log
