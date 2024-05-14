@@ -67,12 +67,15 @@ export class Jumbo {
       scrapedProducts.push(scraped)
     }
 
+    console.log('all products:', products.length)
+
+    console.log('updated:', updatedProducts.length)
     console.log('news:', scrapedProducts.length)
-    console.log('incompletes:', incompleteUrls.length)
+    console.log('incompletes urls:', incompleteUrls.length)
 
     const [completeProducts, incompleteProducts] = await this.getIncompletes(incompleteUrls)
-    console.log('completes:', completeProducts.length)
-    console.log('incompletes:', incompleteProducts.length)
+    console.log('completes products:', completeProducts.length)
+    console.log('incompletes products:', incompleteProducts.length)
   }
 
   async getPages (url: string): Promise<string[]> {
@@ -95,6 +98,7 @@ export class Jumbo {
   }
 
   async getIncompletes (urls: string[]): Promise<[Scraper[], Scraper[]]> {
+    console.log('all urls:', urls.length)
     const splitUrls = this.splitArray(urls)
 
     const allProducts: CencosudProduct[] = []
@@ -107,6 +111,8 @@ export class Jumbo {
 
       allProducts.push(...products.filter(p => p !== undefined) as CencosudProduct[])
     }
+
+    console.log('all products in get incompletes urls:', allProducts.length)
 
     const scrapedProducts: Scraper[] = []
     for (const product of allProducts) {
