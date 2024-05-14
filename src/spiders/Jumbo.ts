@@ -1,5 +1,5 @@
 import { Info } from '../types'
-import { CencosudProduct, CencosudResponse } from './types'
+import { CencosudAverage, CencosudProduct, CencosudResponse } from './types'
 import { BATCH_SIZE, SLEEP_TIME } from '../config.js'
 import { Scraper } from '../classes/Scraper.js'
 import { Updater } from '../classes/Updater.js'
@@ -30,7 +30,8 @@ export class Jumbo {
   productUrl = 'https://sm-web-api.ecomm.cencosud.com/catalog/api/v1/product'
   // endregion
 
-  async run (paths: string[]): Promise<void> {
+  // region RUN
+  async run (paths: string[]): Promise<[Updater[], Scraper[], Scraper[]]> {
     console.log('Running Jumbo Spider')
 
     const pages = (await Promise.all(this.startUrls.map(async (url) => {
@@ -67,17 +68,17 @@ export class Jumbo {
       scrapedProducts.push(scraped)
     }
 
-    console.log('all products:', products.length)
-
-    console.log('updated:', updatedProducts.length)
-    console.log('news:', scrapedProducts.length)
-    console.log('incompletes urls:', incompleteUrls.length)
-
     const [completeProducts, incompleteProducts] = await this.getIncompletes(incompleteUrls)
-    console.log('completes products:', completeProducts.length)
-    console.log('incompletes products:', incompleteProducts.length)
-  }
+    scrapedProducts.push(...completeProducts)
 
+    await this.getAverages(updatedProducts)
+    await this.getAverages(scrapedProducts)
+
+    return [updatedProducts, scrapedProducts, incompleteProducts]
+  }
+  // endregion
+
+  // region Functions
   async getPages (url: string): Promise<string[]> {
     const res = await fetch(`${url}?sc=11`, { headers: this.headers })
     const data: CencosudResponse = await res.json()
@@ -142,4 +143,19 @@ export class Jumbo {
       return undefined
     }
   }
+
+  async getAverages (items: Updater[] | Scraper[]): Promise<void> {
+    const skus = items.map((i: any) => i.product_sku).join(',')
+    try {
+      const res = await fetch(`${this.averageUrl}?ids=${skus}`, { headers: this.headers })
+      const data: CencosudAverage[] = await res.json()
+      for (const item of items) {
+        const average = data.find(a => a.id === item.productSku)
+        if (average !== undefined && average.totalCount !== 0) item.average = average.average
+      }
+    } catch (error) {
+      console.log('Error al obtener los averages')
+    }
+  }
+  // endregion
 }

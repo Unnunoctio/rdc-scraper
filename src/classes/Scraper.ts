@@ -1,7 +1,7 @@
 import { CencosudProduct } from '../spiders/types'
 
 export class Scraper {
-  website: string | undefined
+  website: string
   productSku: string | undefined
   title: string | undefined
   brand: string | undefined
@@ -22,7 +22,7 @@ export class Scraper {
   }
 
   public isIncomplete (): boolean {
-    if (this.website === undefined || this.productSku === undefined || this.title === undefined || this.brand === undefined || this.category === undefined || this.url === undefined || this.price === undefined || this.bestPrice === undefined || this.image === undefined || this.alcoholicGrade === undefined || this.content === undefined || this.quantity === undefined || this.package === undefined) {
+    if (this.productSku === undefined || this.title === undefined || this.brand === undefined || this.category === undefined || this.url === undefined || this.price === undefined || this.price === 0 || this.bestPrice === undefined || this.bestPrice === 0 || this.image === undefined || this.alcoholicGrade === undefined || this.content === undefined || this.quantity === undefined || this.package === undefined) {
       return true
     }
     return false
@@ -39,7 +39,7 @@ export class Scraper {
       this.price = data.items[0].sellers[0].commertialOffer.PriceWithoutDiscount
       this.bestPrice = data.items[0].sellers[0].commertialOffer.Price
     } catch (error) {
-      console.error('Error al obtener los datos principales')
+      console.error('Error al obtener los datos principales', data.productName)
     }
 
     // Image
@@ -49,7 +49,7 @@ export class Scraper {
       const linkParsed = linkSplit.slice(0, -1).join('/')
       this.image = linkParsed
     } catch (error) {
-      console.error('Error al obtener la imagen')
+      console.error('Error al obtener la imagen', data.productName)
     }
 
     // Quantity
