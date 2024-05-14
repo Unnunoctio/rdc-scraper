@@ -1,4 +1,4 @@
-import { CencosudProduct } from '../spiders/types'
+import { CencosudProduct, LiderProduct, LiderSpecification } from '../spiders/types'
 
 export class Scraper {
   website: string
@@ -117,6 +117,90 @@ export class Scraper {
       } else if (titleLower.includes('tetrapack') || titleLower.includes('caja')) {
         this.package = 'Tetrapack'
       }
+    }
+  }
+
+  public setLiderData (data: LiderProduct, pageUrl: string): void {
+    const getCategory = (categories: string[]): string => {
+      for (const category of categories) {
+        if (category.includes('Vinos')) return 'Vinos'
+        if (category.includes('Cervezas')) return 'Cervezas'
+        if (category.includes('Destilados')) return 'Destilados'
+      }
+      return ''
+    }
+
+    const getEspecification = (specifications: LiderSpecification[], name: string): string | undefined => {
+      for (const specification of specifications) {
+        if (specification.name === name) return specification.value
+      }
+      return undefined
+    }
+
+    // Main data
+    try {
+      this.productSku = data.sku
+      this.title = data.displayName
+      this.brand = data.brand
+      this.category = getCategory(data.categorias)
+      this.url = `${pageUrl}/supermercado/product/sku/${data.sku}`
+      this.price = data.price.BasePriceReference
+      this.bestPrice = data.price.BasePriceSales
+    } catch (error) {
+      console.error('Error al obtener los datos principales', data.displayName)
+    }
+
+    // Image
+    try {
+      this.image = data.images.defaultImage.replace('&scale=size[180x180]', '')
+    } catch (error) {
+      console.error('Error al obtener la imagen', data.displayName)
+    }
+
+    // Quantity
+    const quantity = getEspecification(data.specifications, 'Unidades por paquete')
+    if (quantity !== undefined) {
+      this.quantity = Number(quantity)
+    }
+    if (Number.isNaN(this.quantity)) {
+      if (data.displayName.includes('Pack')) {
+        const match = data.displayName.match(/Pack, (\d+)/)
+        this.quantity = (match !== null) ? Number(match[1]) : undefined
+      } else {
+        this.quantity = 1
+      }
+    }
+
+    // Alcoholic Grade
+    const alcoholicGrade = getEspecification(data.specifications, 'Graduación alcohólica')
+    if (alcoholicGrade !== undefined) {
+      this.alcoholicGrade = Number(alcoholicGrade.replaceAll(/[^\d+(?:,\d+)?]/g, '').replaceAll(',', '.'))
+    }
+
+    // Content
+    const content = getEspecification(data.specifications, 'Contenido neto')
+    if (content !== undefined) {
+      this.content = Number(content.split(' ')[0])
+    }
+    if (Number.isNaN(this.content)) {
+      const match = data.displayName.match(/(\d+)\s*(ml|cc|L|l|c\/u)|(\d+)(ml|cc|L|l|c\/u)/)
+      if (match !== null) {
+        const amount = Number(match[1])
+        const unit = match[2]
+        this.content = (unit === 'l' || unit === 'L') ? amount * 1000 : amount
+      }
+    }
+
+    // Package
+    const packaging = getEspecification(data.specifications, 'Presentación')
+    if (packaging !== undefined) {
+      if (packaging === 'Botella' || packaging === 'Botellas') this.package = 'Botella'
+      if (packaging === 'Lata' || packaging === 'Latas') this.package = 'Lata'
+    }
+    if (this.package === undefined) {
+      const name = data.displayName
+      if (name.includes('Botella') || name.includes('Botellas') || name.includes('Botellin')) this.package = 'Botella'
+      if (name.includes('Lata') || name.includes('Latas')) this.package = 'Lata'
     }
   }
 }

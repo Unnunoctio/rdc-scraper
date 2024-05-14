@@ -1,4 +1,4 @@
-import { CencosudProduct } from '../spiders/types'
+import { CencosudProduct, LiderProduct } from '../spiders/types'
 
 export class Updater {
   productSku: string | undefined
@@ -12,14 +12,13 @@ export class Updater {
   }
 
   public isComplete (): boolean {
-    if (this.productSku !== undefined && this.url !== undefined && this.price !== undefined && this.bestPrice !== undefined) {
+    if (this.productSku !== undefined && this.url !== undefined && this.price !== undefined && this.price > 0 && this.bestPrice !== undefined && this.bestPrice > 0) {
       return true
     }
     return false
   }
 
   public setCencosudData (data: CencosudProduct, pageUrl: string): void {
-    // Main data
     try {
       this.productSku = data.productId
       this.url = `${pageUrl}/${data.linkText}/p`
@@ -27,6 +26,17 @@ export class Updater {
       this.bestPrice = data.items[0].sellers[0].commertialOffer.Price
     } catch (error) {
       console.error('Error al obtener los datos a actualizar')
+    }
+  }
+
+  public setLiderData (data: LiderProduct, pageUrl: string): void {
+    try {
+      this.productSku = data.sku
+      this.url = `${pageUrl}/supermercado/product/sku/${data.sku}`
+      this.price = data.price.BasePriceReference
+      this.bestPrice = data.price.BasePriceSales
+    } catch (error) {
+      console.error('Error al obtener los datos a actualizar', error)
     }
   }
 }
