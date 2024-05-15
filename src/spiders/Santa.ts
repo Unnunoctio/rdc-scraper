@@ -49,7 +49,13 @@ export class Santa {
     const incompleteUrls: string[] = []
 
     for (const product of products) {
-      const path = `${this.pageUrl}/${product.linkText}/p`
+      let path: string | undefined
+      try {
+        path = `${this.pageUrl}/${product.linkText}/p`
+      } catch (error) {
+        console.error('Error al generar el path:', product.productName)
+      }
+      if (path === undefined) continue
       if (this.blockUrls.includes(path)) continue
 
       if (paths.includes(path)) {

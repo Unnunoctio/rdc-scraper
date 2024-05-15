@@ -64,7 +64,13 @@ export class Lider {
     const incompleteProducts: Scraper[] = []
 
     for (const product of products) {
-      const path = `${this.pageUrl}/supermercado/product/sku/${product.sku}`
+      let path: string | undefined
+      try {
+        path = `${this.pageUrl}/supermercado/product/sku/${product.sku}`
+      } catch (error) {
+        console.error('Error al generar el path:', product.displayName)
+      }
+      if (path === undefined) continue
       if (this.blockUrls.includes(path)) continue
 
       if (paths.includes(path)) {
