@@ -2,6 +2,34 @@ import { Db } from 'mongodb'
 import { Drink, DrinkDB } from '../types.js'
 import { getDrinkInProducts } from './products.js'
 import { getDrinksApi } from '../utils/drinksApi.js'
+import { Scraper } from '../classes/Scraper.js'
+
+export const getDrink = (product: Scraper, drinks: DrinkDB[]): DrinkDB | undefined => {
+  try {
+    const drinkOptions = drinks.filter(d => d.brand === product.brand && d.content === product.content && d.package === product.package && d.alcoholic_grade === product.alcoholicGrade)
+    if (drinkOptions.length === 0) return undefined
+
+    let selectedDrink: DrinkDB | undefined
+    let matchingWords: number = -1
+
+    const titleSplit = product.title?.toLowerCase().split(' ').filter(word => word !== '') as string[]
+
+    drinkOptions.forEach(option => {
+      const nameSplit = option.name.toLowerCase().replace(`${option.brand.toLowerCase()}`, '').split(' ').filter(word => word !== '')
+      const isMatching = nameSplit.every(word => titleSplit.includes(word))
+
+      if (isMatching && (nameSplit.length > matchingWords)) {
+        matchingWords = nameSplit.length
+        selectedDrink = option
+      }
+    })
+
+    return selectedDrink
+  } catch (error) {
+    console.error('Error al obtener el drink', product.title)
+    return undefined
+  }
+}
 
 const saveDrink = async (db: Db, drink: Drink): Promise<void> => {
   try {
