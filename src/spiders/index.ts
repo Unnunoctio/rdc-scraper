@@ -1,4 +1,3 @@
-export { JumboSpider } from './JumboSpider.js'
-export { SantaSpider } from './SantaSpider.js'
-export { LiderSpider } from './LiderSpider.js'
-export { runSpiders } from './run-spiders.js'
+export { Jumbo } from './Jumbo.js'
+export { Santa } from './Santa.js'
+export { Lider } from './Lider.js'

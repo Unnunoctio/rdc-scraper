@@ -1,77 +1,37 @@
-import 'dotenv/config.js'
-import { CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET, CLOUDINARY_NAME, ENVIRONMENT } from './config.js'
 import schedule from 'node-schedule'
-import { v2 as cloudinary } from 'cloudinary'
-import { runSpiders } from './spiders/index.js'
-import { sendEmail } from './utils/emails.js'
-import { dbConnect, dbDisconnect } from './utils/db.js'
+import { ENVIRONMENT } from './config.js'
+import { ScheduleHour, TimeHour } from './enum.js'
+import { cloudinaryConnect } from './utils/cloudinary.js'
+import { sendEmail } from './utils/resend.js'
+import { runScraping } from './run.js'
 
 console.log('Starting App')
 console.log('Environment:', ENVIRONMENT)
 
 // Connect to Cloudinary
-cloudinary.config({
-  cloud_name: CLOUDINARY_NAME,
-  api_key: CLOUDINARY_API_KEY,
-  api_secret: CLOUDINARY_API_SECRET
-})
+cloudinaryConnect()
 
-// Scraping function
-const firstScraping = async (): Promise<void> => {
-  console.log('------------------ first scraping ------------------')
-  const isConnected = await dbConnect()
-  if (!isConnected) {
-    console.error('Error connecting to database')
-    return
+// Scraping Function
+const scraping = async (hour: TimeHour): Promise<any> => {
+  console.log(`-------------------------------------- Scraping ${hour} ---------------------------------------`)
+  const notFoundProducts = await runScraping()
+  if (new Date().getDay() === 6 && hour === TimeHour.PM_2) {
+    await sendEmail(notFoundProducts)
   }
-
-  const notFound = await runSpiders()
-  if (ENVIRONMENT === 'PRODUCTION') {
-    await sendEmail(notFound)
-  }
-
-  await dbDisconnect()
-  console.log('-------------- first scraping finished -------------')
+  console.log('------------------------------------ Scraping Finished --------------------------------------')
 }
 
-const morningScraping = async (): Promise<void> => {
-  console.log('------------------ scraping 8 am -------------------')
-  const isConnected = await dbConnect()
-  if (!isConnected) {
-    console.error('Error connecting to database')
-    return
-  }
+// Schedules (Cada 2 horas desde las 8 am hasta las 8 pm)
+schedule.scheduleJob(ScheduleHour.AM_8, async () => await scraping(TimeHour.AM_8))
 
-  await runSpiders()
+schedule.scheduleJob(ScheduleHour.AM_10, async () => await scraping(TimeHour.AM_10))
 
-  await dbDisconnect()
-  console.log('----------------- scraping finised -----------------')
-}
+schedule.scheduleJob(ScheduleHour.PM_12, async () => await scraping(TimeHour.PM_12))
 
-const afternoonScraping = async (): Promise<void> => {
-  console.log('------------------ scraping 2 pm -------------------')
-  const isConnected = await dbConnect()
-  if (!isConnected) {
-    console.error('Error connecting to database')
-    return
-  }
+schedule.scheduleJob(ScheduleHour.PM_2, async () => await scraping(TimeHour.PM_2))
 
-  const notFound = await runSpiders()
-  // Si es sabado - enviar un correo electronico
-  if (new Date().getDay() === 6) {
-    await sendEmail(notFound)
-  }
+schedule.scheduleJob(ScheduleHour.PM_4, async () => await scraping(TimeHour.PM_4))
 
-  await dbDisconnect()
-  console.log('----------------- scraping finised -----------------')
-}
+schedule.scheduleJob(ScheduleHour.PM_6, async () => await scraping(TimeHour.PM_6))
 
-// First scraping
-await new Promise(resolve => setTimeout(resolve, 3000))
-await firstScraping()
-
-// Scraping a las 8am en chile
-schedule.scheduleJob('0 11 * * *', morningScraping)
-
-// Scraping a las 2pm en chile
-schedule.scheduleJob('0 17 * * *', afternoonScraping)
+schedule.scheduleJob(ScheduleHour.PM_8, async () => await scraping(TimeHour.PM_8))

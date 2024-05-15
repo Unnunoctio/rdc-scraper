@@ -1,15 +1,24 @@
-import axios from 'axios'
-import { Image } from '../types'
 import { UploadApiResponse, v2 as cloudinary } from 'cloudinary'
+import { Image } from '../types'
+import { CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET, CLOUDINARY_NAME } from '../config.js'
+
+export const cloudinaryConnect = (): void => {
+  cloudinary.config({
+    cloud_name: CLOUDINARY_NAME,
+    api_key: CLOUDINARY_API_KEY,
+    api_secret: CLOUDINARY_API_SECRET
+  })
+  console.log('Conectado a Cloudinary')
+}
 
 export const uploadImages = async (imageUrl: string, category: string, brand: string, sku: number): Promise<Image> => {
   // obtener la imagen
-  const res = await axios.get(imageUrl, { responseType: 'arraybuffer' } as any)
-  const data = Buffer.from(res.data)
+  const res = await fetch(imageUrl)
+  const data = Buffer.from(await res.arrayBuffer())
 
   const folder = `${category.toLowerCase()}/${brand.toLowerCase().replaceAll('/', '-')}`
 
-  // get images
+  // subir las imagenes
   const small = await getImage(data, folder, `${sku}-200`, '200')
   const large = await getImage(data, folder, `${sku}-600`, '600')
 

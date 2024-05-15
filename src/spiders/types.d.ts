@@ -1,17 +1,5 @@
-import { ScraperClass } from '../classes/ScraperClass'
-import { UpdaterClass } from '../classes/UpdaterClass'
-import { Info } from '../types'
 
-// SPIDER
-export interface Spider {
-  info: Info
-  headers: { [key: string]: string }
-  start_urls: string[]
-
-  run: (paths: string[]) => Promise<[UpdaterClass[], ScraperClass[]]>
-}
-
-// CENCOSUD (Jumbo y Santa Isabel)
+// region CENCOSUD
 export interface CencosudResponse {
   redirect: null
   products: CencosudProduct[]
@@ -57,8 +45,9 @@ export interface CencosudAverage {
   totalCount: number
   id: string
 }
+// endregion
 
-// LIDER
+// region LIDER
 export interface LiderResponse {
   products: LiderProduct[]
   nbPages: number
@@ -99,3 +88,4 @@ export interface LiderBody {
   sortBy: string
   hitsPerPage: number
 }
+// endregion

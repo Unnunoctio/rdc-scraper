@@ -1,19 +1,31 @@
-import { ObjectId, Document } from 'mongoose'
+import { ObjectId } from 'mongodb'
 
-// BASE DE DATOS
-export interface DrinkDB extends Drink, Document {}
+// Base de Datos
+export interface DrinkDB extends Drink {
+  _id: ObjectId
+}
 
-export interface ImageDB extends Image, Document {}
+export interface ImageDB extends Image {
+  _id: ObjectId
+}
 
-export interface InfoDB extends Info, Document {}
+export interface InfoDB extends Info {
+  _id: ObjectId
+}
 
-export interface RecordDB extends Record, Document {}
+export interface RecordDB extends Record {
+  _id: ObjectId
+}
 
-export interface WebsiteDB extends Website, Document {}
+export interface WebsiteDB extends Website {
+  _id: ObjectId
+}
 
-export interface ProductDB extends Product, Document {}
+export interface ProductDB extends Product {
+  _id: ObjectId
+}
 
-// INTERFACE
+// Interface
 export interface Drink {
   name: string
   brand: string
@@ -64,7 +76,7 @@ export interface Product {
   websites: ObjectId[]
 }
 
-// FILES
+// Files
 export interface ExcelFile {
   filename: string
   content: Buffer

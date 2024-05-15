@@ -1,59 +1,45 @@
 import { CencosudProduct, LiderProduct, LiderSpecification } from '../spiders/types'
 
-export class ScraperClass {
-  website: string | undefined
-  product_sku: any | undefined
+export class Scraper {
+  website: string
+  productSku: string | undefined
   title: string | undefined
   brand: string | undefined
   category: string | undefined
   url: string | undefined
   price: number | undefined
-  best_price: number | undefined
+  bestPrice: number | undefined
   image: string | undefined
   average: number | null
-  alcoholic_grade: number | undefined
+  alcoholicGrade: number | undefined
   content: number | undefined
   quantity: number | undefined
   package: string | undefined
 
-  constructor (data: CencosudProduct | LiderProduct, website: string, pageUrl: string) {
+  constructor (website: string) {
     this.website = website
     this.average = null
-
-    if (website === 'Jumbo' || website === 'Santa Isabel') this.getCencosudData(data as CencosudProduct, pageUrl)
-    if (website === 'Lider') this.getLiderData(data as LiderProduct, pageUrl)
   }
 
   public isIncomplete (): boolean {
-    if (this.website === undefined || this.product_sku === undefined || this.title === undefined || this.brand === undefined || this.category === undefined || this.url === undefined || this.price === undefined || this.best_price === undefined || this.alcoholic_grade === undefined || this.content === undefined || this.quantity === undefined || this.package === undefined) {
+    if (this.productSku === undefined || this.title === undefined || this.brand === undefined || this.category === undefined || this.url === undefined || this.price === undefined || this.price === 0 || this.bestPrice === undefined || this.bestPrice === 0 || this.image === undefined || this.alcoholicGrade === undefined || this.content === undefined || this.quantity === undefined || this.package === undefined) {
       return true
     }
     return false
   }
 
-  public isComplete (): boolean {
-    if (this.website !== undefined && this.product_sku !== undefined && this.title !== undefined && this.brand !== undefined && this.category !== undefined && this.url !== undefined && this.price !== undefined && this.price > 0 && this.best_price !== undefined && this.best_price > 0 && this.image !== undefined && this.alcoholic_grade !== undefined && this.content !== undefined && this.quantity !== undefined && this.package !== undefined) {
-      return true
-    }
-    return false
-  }
-
-  public toString (): string {
-    return JSON.stringify(this)
-  }
-
-  private getCencosudData (data: CencosudProduct, pageUrl: string): void {
+  public setCencosudData (data: CencosudProduct, pageUrl: string): void {
     // Main data
     try {
-      this.product_sku = data.productId
+      this.productSku = data.productId
       this.title = data.productName
       this.brand = data.brand
       this.category = data.categories[0].split('/')[2]
       this.url = `${pageUrl}/${data.linkText}/p`
       this.price = data.items[0].sellers[0].commertialOffer.PriceWithoutDiscount
-      this.best_price = data.items[0].sellers[0].commertialOffer.Price
+      this.bestPrice = data.items[0].sellers[0].commertialOffer.Price
     } catch (error) {
-      console.error('Error al obtener los datos principales', error)
+      console.error('Error al obtener los datos principales', data.productName)
     }
 
     // Image
@@ -63,7 +49,7 @@ export class ScraperClass {
       const linkParsed = linkSplit.slice(0, -1).join('/')
       this.image = linkParsed
     } catch (error) {
-      console.error('Error al obtener la imagen', error)
+      console.error('Error al obtener la imagen', data.productName)
     }
 
     // Quantity
@@ -85,11 +71,11 @@ export class ScraperClass {
     // Alcoholic Grade
     if (data['Graduación Alcohólica'] !== undefined) {
       const match = data['Graduación Alcohólica'][0].match(/(\d+(?:\.\d+)?)°/)
-      this.alcoholic_grade = (match != null) ? Number(match[1]) : undefined
+      this.alcoholicGrade = (match != null) ? Number(match[1]) : undefined
     }
-    if (data.productName.includes('°') && this.alcoholic_grade === undefined) {
+    if (data.productName.includes('°') && this.alcoholicGrade === undefined) {
       const match = data.productName.match(/(\d+(?:\.\d+)?)°/)
-      this.alcoholic_grade = (match != null) ? Number(match[1]) : undefined
+      this.alcoholicGrade = (match != null) ? Number(match[1]) : undefined
     }
 
     // Content
@@ -134,7 +120,7 @@ export class ScraperClass {
     }
   }
 
-  private getLiderData (data: LiderProduct, pageUrl: string): void {
+  public setLiderData (data: LiderProduct, pageUrl: string): void {
     const getCategory = (categories: string[]): string => {
       for (const category of categories) {
         if (category.includes('Vinos')) return 'Vinos'
@@ -153,22 +139,22 @@ export class ScraperClass {
 
     // Main data
     try {
-      this.product_sku = data.sku
+      this.productSku = data.sku
       this.title = data.displayName
       this.brand = data.brand
       this.category = getCategory(data.categorias)
       this.url = `${pageUrl}/supermercado/product/sku/${data.sku}`
       this.price = data.price.BasePriceReference
-      this.best_price = data.price.BasePriceSales
+      this.bestPrice = data.price.BasePriceSales
     } catch (error) {
-      console.error('Error al obtener los datos principales', error)
+      console.error('Error al obtener los datos principales', data.displayName)
     }
 
     // Image
     try {
       this.image = data.images.defaultImage.replace('&scale=size[180x180]', '')
     } catch (error) {
-      console.error('Error al obtener la imagen', error)
+      console.error('Error al obtener la imagen', data.displayName)
     }
 
     // Quantity
@@ -188,7 +174,7 @@ export class ScraperClass {
     // Alcoholic Grade
     const alcoholicGrade = getEspecification(data.specifications, 'Graduación alcohólica')
     if (alcoholicGrade !== undefined) {
-      this.alcoholic_grade = Number(alcoholicGrade.replaceAll(/[^\d+(?:,\d+)?]/g, '').replaceAll(',', '.'))
+      this.alcoholicGrade = Number(alcoholicGrade.replaceAll(/[^\d+(?:,\d+)?]/g, '').replaceAll(',', '.'))
     }
 
     // Content
