@@ -142,7 +142,7 @@ export class Jumbo {
   }
 
   async getAverages (items: Updater[] | Scraper[]): Promise<void> {
-    const skus = items.map((i: any) => i.product_sku).join(',')
+    const skus = items.map((i: any) => i.productSku).join(',')
     try {
       const res = await fetch(`${this.averageUrl}?ids=${skus}`, { headers: this.headers })
       const data: CencosudAverage[] = await res.json()
