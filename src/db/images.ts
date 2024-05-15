@@ -1,6 +1,6 @@
 import { Db, ObjectId } from 'mongodb'
 import { Image } from '../types'
-import { uploadImages } from '../utils/cloudinary'
+import { uploadImages } from '../utils/cloudinary.js'
 
 export const saveImage = async (db: Db, imageUrl: string, category: string, brand: string, sku: number): Promise<ObjectId | undefined> => {
   try {

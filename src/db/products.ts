@@ -1,10 +1,10 @@
 import { Db, ObjectId } from 'mongodb'
 import { DrinkDB, Info, Product } from '../types'
-import { getInfo } from './infos'
-import { getDrink } from './drinks'
-import { deleteWebsite, saveWebsite } from './websites'
-import { deleteImage, saveImage } from './images'
-import { Scraper } from '../classes/Scraper'
+import { getInfo } from './infos.js'
+import { getDrink } from './drinks.js'
+import { deleteWebsite, saveWebsite } from './websites.js'
+import { deleteImage, saveImage } from './images.js'
+import { Scraper } from '../classes/Scraper.js'
 
 export const getDrinkInProducts = async (db: Db): Promise<ObjectId[]> => {
   try {

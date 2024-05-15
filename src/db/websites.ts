@@ -1,8 +1,8 @@
 import { Db, ObjectId } from 'mongodb'
 import { Website, WebsiteDB } from '../types'
 import { saveOrUpdateRecord, saveRecord } from './records.js'
-import { Updater } from '../classes/Updater'
-import { Scraper } from '../classes/Scraper'
+import { Updater } from '../classes/Updater.js'
+import { Scraper } from '../classes/Scraper.js'
 
 export const getAllPaths = async (db: Db): Promise<string[]> => {
   try {
