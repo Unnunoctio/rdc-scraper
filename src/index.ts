@@ -1,16 +1,18 @@
-import { dbConnect } from './db/client.js'
+import { dbConnect, dbDisconnect } from './db/client.js'
+import { deleteManyDrinks, saveManyDrinks } from './db/drinks.js'
 import { getAllPaths } from './db/websites.js'
 import { TimeUnit } from './enum.js'
 import { Jumbo } from './spiders/Jumbo.js'
 import { Lider } from './spiders/Lider.js'
 import { Santa } from './spiders/Santa.js'
 
-const db = await dbConnect()
-if (db === undefined) process.exit(1)
-
-const paths = await getAllPaths(db)
-
 while (true) {
+  const db = await dbConnect()
+  if (db === undefined) process.exit(1)
+
+  const paths = await getAllPaths(db)
+  await saveManyDrinks(db)
+
   console.time('Jumbo')
   const jumboSpider = new Jumbo()
   const [jumboUpdated, jumboCompleted, jumboIncompleted] = await jumboSpider.run(paths)
@@ -39,5 +41,7 @@ while (true) {
   console.log('Lider Incompleted:', liderIncompleted.length)
   console.timeEnd('Lider')
 
+  await deleteManyDrinks(db)
+  await dbDisconnect()
   await new Promise(resolve => setTimeout(resolve, 2 * TimeUnit.MIN))
 }
