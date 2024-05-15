@@ -101,7 +101,6 @@ export class Santa {
   }
 
   async getIncompletes (urls: string[]): Promise<[Scraper[], Scraper[]]> {
-    console.log('all urls:', urls.length)
     const splitUrls = this.splitArray(urls)
 
     const allProducts: CencosudProduct[] = []
@@ -114,8 +113,6 @@ export class Santa {
 
       allProducts.push(...products.filter(p => p !== undefined) as CencosudProduct[])
     }
-
-    console.log('all products in get incompletes urls:', allProducts.length)
 
     const scrapedProducts: Scraper[] = []
     for (const product of allProducts) {
@@ -156,7 +153,7 @@ export class Santa {
         if (average !== undefined && average.totalCount !== 0) item.average = average.average
       }
     } catch (error) {
-      console.log('Error al obtener los averages')
+      console.error('Error al obtener los averages')
     }
   }
   // endregion
