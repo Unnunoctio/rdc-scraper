@@ -75,3 +75,9 @@ export interface Product {
   drink: ObjectId
   websites: ObjectId[]
 }
+
+// Files
+export interface ExcelFile {
+  filename: string
+  content: Buffer
+}
