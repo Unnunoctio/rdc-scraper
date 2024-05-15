@@ -18,4 +18,5 @@ export const dbConnect = async (): Promise<Db | undefined> => {
 
 export const dbDisconnect = async (): Promise<void> => {
   await client.close()
+  console.log('Desconectado de la Base de Datos')
 }
