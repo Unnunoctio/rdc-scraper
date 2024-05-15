@@ -59,7 +59,7 @@ export const runScraping = async (): Promise<Scraper[]> => {
   notFoundProducts.push(...liderNotFound)
   notFoundProducts.push(...liderIncompleted)
 
-  console.log('-------------------------------------------------------------------------------------------------------')
+  console.log('---------------------------------------------------------------------------------------------')
 
   await updateWebsitesWithoutStock(db, watcher)
   await deleteManyDrinks(db)
