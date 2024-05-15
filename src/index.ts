@@ -17,6 +17,7 @@ while (true) {
 
   // inicializa el watcher y los productos no encontrados
   const watcher = new Date().getTime()
+  console.log('Watcher:', watcher)
 
   //! JUMBO
   console.time('Jumbo Scraping')
