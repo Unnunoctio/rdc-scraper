@@ -1,6 +1,7 @@
 import { Db } from 'mongodb'
+import { Drink, DrinkDB } from '../types.js'
+import { getDrinkInProducts } from './products.js'
 import { getDrinksApi } from '../utils/drinksApi.js'
-import { Drink, DrinkDB, Product } from '../types.js'
 
 const saveDrink = async (db: Db, drink: Drink): Promise<void> => {
   try {
@@ -33,13 +34,10 @@ export const saveManyDrinks = async (db: Db): Promise<DrinkDB[]> => {
 
 export const deleteManyDrinks = async (db: Db): Promise<void> => {
   try {
-    const productsCollection = db.collection<Product>('products')
-    const drinksCollection = db.collection<Drink>('drinks')
+    const drinksId = await getDrinkInProducts(db)
+    const collection = db.collection<Drink>('drinks')
 
-    const products = await productsCollection.find().toArray()
-    const drinksId = products.map(p => p.drink)
-
-    await drinksCollection.deleteMany({ _id: { $nin: drinksId } })
+    await collection.deleteMany({ _id: { $nin: drinksId } })
   } catch (error) {
     console.error('Error al eliminar los drinks')
   }
