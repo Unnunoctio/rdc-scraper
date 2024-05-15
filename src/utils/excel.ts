@@ -22,7 +22,7 @@ export const createExcel = async (products: Scraper[], title: string): Promise<E
       { header: 'Title', key: 'title' },
       { header: 'Brand', key: 'brand' },
       { header: 'Url', key: 'url' },
-      { header: 'Grade', key: 'alcoholic_grade' },
+      { header: 'Grade', key: 'alcoholicGrade' },
       { header: 'Content', key: 'content' },
       { header: 'Quantity', key: 'quantity' },
       { header: 'Package', key: 'package' }
