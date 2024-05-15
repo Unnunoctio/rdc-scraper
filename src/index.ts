@@ -13,13 +13,22 @@ cloudinaryConnect()
 
 // Scraping Function
 const scraping = async (hour: TimeHour): Promise<any> => {
-  console.log(`------------------------------------------- Scraping ${hour} --------------------------------------------`)
+  console.log(`-------------------------------------- Scraping ${hour} ---------------------------------------`)
   const notFoundProducts = await runScraping()
   if (new Date().getDay() === 6 && hour === TimeHour.PM_2) {
     await sendEmail(notFoundProducts)
   }
-  console.log('----------------------------------------- Scraping Finished ------------------------------------------')
+  console.log('------------------------------------ Scraping Finished -------------------------------------')
 }
+
+const testing = async (): Promise<any> => {
+  console.log('------------------------------------- Scraping Testing -------------------------------------')
+  const notFoundProducts = await runScraping()
+  await sendEmail(notFoundProducts)
+  console.log('------------------------------------ Scraping Finished -------------------------------------')
+}
+
+await testing()
 
 // Schedules (Cada 2 horas desde las 8 am hasta las 8 pm)
 schedule.scheduleJob(ScheduleHour.AM_8, async () => await scraping(TimeHour.AM_8))

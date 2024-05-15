@@ -17,7 +17,7 @@ export const runScraping = async (): Promise<Scraper[]> => {
   const notFoundProducts: Scraper[] = []
 
   console.log('Watcher:', watcher)
-  console.log('-------------------------------------------------------------------------------------------------------')
+  console.log('---------------------------------------------------------------------------------------------')
   await new Promise(resolve => setTimeout(resolve, 5 * TimeUnit.SEC))
 
   //! JUMBO
