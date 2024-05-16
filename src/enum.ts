@@ -11,9 +11,6 @@ export enum ScheduleHour {
   PM_2 = '0 18 * * *',
   PM_4 = '0 20 * * *',
   PM_6 = '0 22 * * *',
-  PM_8 = '0 0 * * *',
-  PM_9 = '0 1 * * *',
-  PM_10 = '0 2 * * *',
 }
 
 export enum TimeHour {
@@ -23,7 +20,4 @@ export enum TimeHour {
   PM_2 = '02 PM',
   PM_4 = '04 PM',
   PM_6 = '06 PM',
-  PM_8 = '08 PM',
-  PM_9 = '09 PM',
-  PM_10 = '10 PM',
 }

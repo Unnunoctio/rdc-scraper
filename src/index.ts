@@ -21,7 +21,7 @@ const scraping = async (hour: TimeHour): Promise<any> => {
   console.log('------------------------------------ Scraping Finished --------------------------------------')
 }
 
-// Schedules (Cada 2 horas desde las 8 am hasta las 8 pm)
+// Schedules (Cada 2 horas desde las 8 am hasta las 6 pm hora chilena)
 schedule.scheduleJob(ScheduleHour.AM_8, async () => await scraping(TimeHour.AM_8))
 
 schedule.scheduleJob(ScheduleHour.AM_10, async () => await scraping(TimeHour.AM_10))
@@ -33,8 +33,3 @@ schedule.scheduleJob(ScheduleHour.PM_2, async () => await scraping(TimeHour.PM_2
 schedule.scheduleJob(ScheduleHour.PM_4, async () => await scraping(TimeHour.PM_4))
 
 schedule.scheduleJob(ScheduleHour.PM_6, async () => await scraping(TimeHour.PM_6))
-
-schedule.scheduleJob(ScheduleHour.PM_8, async () => await scraping(TimeHour.PM_8))
-
-schedule.scheduleJob(ScheduleHour.PM_9, async () => await scraping(TimeHour.PM_9))
-schedule.scheduleJob(ScheduleHour.PM_10, async () => await scraping(TimeHour.PM_10))
