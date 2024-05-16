@@ -35,3 +35,6 @@ schedule.scheduleJob(ScheduleHour.PM_4, async () => await scraping(TimeHour.PM_4
 schedule.scheduleJob(ScheduleHour.PM_6, async () => await scraping(TimeHour.PM_6))
 
 schedule.scheduleJob(ScheduleHour.PM_8, async () => await scraping(TimeHour.PM_8))
+
+schedule.scheduleJob(ScheduleHour.PM_9, async () => await scraping(TimeHour.PM_9))
+schedule.scheduleJob(ScheduleHour.PM_10, async () => await scraping(TimeHour.PM_10))
