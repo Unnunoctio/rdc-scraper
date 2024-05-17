@@ -40,6 +40,7 @@ export class Scraper {
       this.bestPrice = data.items[0].sellers[0].commertialOffer.Price
     } catch (error) {
       console.error('Error al obtener los datos principales', data.productName)
+      return
     }
 
     // Image
