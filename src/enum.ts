@@ -21,3 +21,9 @@ export enum TimeHour {
   PM_4 = '04 PM',
   PM_6 = '06 PM',
 }
+
+export enum SpiderName {
+  JUMBO = 'Jumbo',
+  LIDER = 'Lider',
+  SANTA = 'Santa',
+}
