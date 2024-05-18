@@ -48,7 +48,6 @@ export const runScraping = async (): Promise<Scraper[]> => {
   await new Promise(resolve => setTimeout(resolve, 30 * TimeUnit.SEC))
 
   //! LIDER
-  console.time('Lider Scraping')
   const liderNotFound = await runSpider(db, new Lider(), SpiderName.LIDER, paths, drinks, watcher)
   notFoundProducts.push(...liderNotFound)
 

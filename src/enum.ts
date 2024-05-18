@@ -25,5 +25,5 @@ export enum TimeHour {
 export enum SpiderName {
   JUMBO = 'Jumbo',
   LIDER = 'Lider',
-  SANTA = 'Santa',
+  SANTA = 'Santa Isabel',
 }
