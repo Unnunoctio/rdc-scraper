@@ -1,10 +1,10 @@
 import { Info } from '../types'
-import { CencosudAverage, CencosudProduct, CencosudResponse } from './types'
+import { CencosudAverage, CencosudProduct, CencosudResponse, Spider } from './types'
 import { BATCH_SIZE, SLEEP_TIME } from '../config.js'
 import { Scraper } from '../classes/Scraper.js'
 import { Updater } from '../classes/Updater.js'
 
-export class Jumbo {
+export class Jumbo implements Spider {
   // region Metadata
   info: Info = {
     name: 'Jumbo',

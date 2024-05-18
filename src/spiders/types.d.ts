@@ -1,3 +1,11 @@
+import { Scraper } from '../classes/Scraper'
+import { Info } from '../types'
+
+// Spider
+export interface Spider {
+  info: Info
+  run: (paths: string[]) => Promise<[Updater[], Scraper[], Scraper[]]>
+}
 
 // region CENCOSUD
 export interface CencosudResponse {

@@ -1,9 +1,9 @@
 import { Info } from '../types'
-import { LiderBody, LiderProduct, LiderResponse } from './types'
+import { LiderBody, LiderProduct, LiderResponse, Spider } from './types'
 import { Scraper } from '../classes/Scraper.js'
 import { Updater } from '../classes/Updater.js'
 
-export class Lider {
+export class Lider implements Spider {
   // region Metadata
   info: Info = {
     name: 'Lider',
