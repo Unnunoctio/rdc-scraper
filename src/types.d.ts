@@ -81,3 +81,8 @@ export interface ExcelFile {
   filename: string
   content: Buffer
 }
+
+// API
+export interface DrinksApi {
+  drinks: Drink[]
+}

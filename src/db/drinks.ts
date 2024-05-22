@@ -47,7 +47,6 @@ export const saveManyDrinks = async (db: Db): Promise<DrinkDB[]> => {
   const drinksApi = await getDrinksApi()
 
   await Promise.all(drinksApi.map(async (d: any) => {
-    delete d._id
     await saveDrink(db, d)
   }))
 
