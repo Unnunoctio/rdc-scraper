@@ -2,15 +2,17 @@ import { sleep } from 'bun'
 import type { Scraper } from './classes'
 import type { Spider } from './spiders/types'
 import { SpiderName, TimeUnit } from './utils/enums'
-import { Jumbo } from './spiders'
+import { Jumbo, Santa } from './spiders'
 
 const runSpider = async (spider: Spider, name: SpiderName, paths: string[], watcher: number): Promise<Scraper[]> => {
   console.time(`${name} Scraping`)
-  // const [updated, completed, incompleted] = await spider.run([], proxies)
-  await spider.run(paths)
+  const [updated, completed, incompleted] = await spider.run(paths)
+  //! Update websites
+  //! Save products
   console.timeEnd(`${name} Scraping`)
 
-  return []
+  console.log(`Updated: ${updated.length}`)
+  return [...completed, ...incompleted]
 }
 
 export const runSpiders = async (): Promise<Scraper[]> => {
@@ -25,7 +27,17 @@ export const runSpiders = async (): Promise<Scraper[]> => {
   const jumboNotFound = await runSpider(new Jumbo(), SpiderName.JUMBO, [], watcher)
   notFound.push(...jumboNotFound)
 
-  await sleep(5 * TimeUnit.SEC)
+  console.log('---------------------------------------------------------')
+  await sleep(30 * TimeUnit.SEC)
+
+  // TODO: SANTA
+  const santaNotFound = await runSpider(new Santa(), SpiderName.SANTA, [], watcher)
+  notFound.push(...santaNotFound)
+
+  console.log('---------------------------------------------------------')
+  await sleep(30 * TimeUnit.SEC)
+
+  // TODO: LIDER
   console.log('---------------------------------------------------------------------------------------------')
 
   return notFound
