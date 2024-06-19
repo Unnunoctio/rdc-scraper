@@ -1,10 +1,11 @@
 import { scheduleJob } from 'node-schedule'
 import { ENVIRONMENT } from './config'
 import { ScheduleHour, TimeHour, TimeUnit } from './utils/enums'
-import { isSaturday } from './utils/time'
+import { isSaturday, sleepAndGC } from './utils/time'
 import { runSpiders } from './run-spiders'
 import { sleep } from 'bun'
 import type { Scraper } from './classes'
+import { sendEmail } from './utils/resend'
 
 console.log('Starting App')
 console.log('Environment:', ENVIRONMENT)
@@ -14,14 +15,13 @@ const scraping = async (hour: TimeHour): Promise<void> => {
   console.log(`------------------------------------- Scraping  ${hour} ---------------------------------------`)
   let notFound: Scraper[] | undefined = await runSpiders()
   if (isSaturday() && hour === TimeHour.PM_2) {
-    //! Send Email
+    // pass
   }
-  console.log('Not found products:', notFound.length)
+  await sendEmail(notFound)
   console.log('------------------------------------ Scraping Finished --------------------------------------')
 
   notFound = undefined
-  await sleep(1 * TimeUnit.MIN)
-  Bun.gc(true)
+  await sleepAndGC()
 }
 
 // TODO: Schedules every 2 hours between 8 am to 6 pm in Chilean time
