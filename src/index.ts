@@ -4,6 +4,7 @@ import { ScheduleHour, TimeHour, TimeUnit } from './utils/enums'
 import { isSaturday } from './utils/time'
 import { runSpiders } from './run-spiders'
 import { sleep } from 'bun'
+import type { Scraper } from './classes'
 
 console.log('Starting App')
 console.log('Environment:', ENVIRONMENT)
@@ -11,12 +12,16 @@ console.log('Environment:', ENVIRONMENT)
 // TODO: Scraping Function
 const scraping = async (hour: TimeHour): Promise<void> => {
   console.log(`------------------------------------- Scraping  ${hour} ---------------------------------------`)
-  const notFound = await runSpiders()
+  let notFound: Scraper[] | undefined = await runSpiders()
   if (isSaturday() && hour === TimeHour.PM_2) {
     //! Send Email
   }
   console.log('Not found products:', notFound.length)
   console.log('------------------------------------ Scraping Finished --------------------------------------')
+
+  notFound = undefined
+  await sleep(1 * TimeUnit.MIN)
+  Bun.gc(true)
 }
 
 // TODO: Schedules every 2 hours between 8 am to 6 pm in Chilean time
