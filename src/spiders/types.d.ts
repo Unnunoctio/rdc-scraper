@@ -54,3 +54,46 @@ export interface CencosudAverage {
   id: string
 }
 // endregion
+
+// region LIDER
+export interface LiderResponse {
+  products: LiderProduct[]
+  nbPages: number
+}
+
+export interface LiderProduct {
+  sku: string
+  brand: string
+  displayName: string
+  images: LiderImages
+  specifications: LiderSpecification[]
+  price: LiderPrice
+  categorias: string[]
+  available: boolean
+}
+
+export interface LiderImages {
+  defaultImage: string
+  smallImage: string
+  mediumImage: string
+  largeImage: string
+}
+
+export interface LiderSpecification {
+  name: string
+  value: string
+}
+
+export interface LiderPrice {
+  BasePriceReference: number
+  BasePriceSales: number
+}
+
+export interface LiderBody {
+  categories: string
+  page: number
+  facets: string[]
+  sortBy: string
+  hitsPerPage: number
+}
+// endregion
