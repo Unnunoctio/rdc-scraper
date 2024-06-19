@@ -11,10 +11,11 @@ console.log('Environment:', ENVIRONMENT)
 // TODO: Scraping Function
 const scraping = async (hour: TimeHour): Promise<void> => {
   console.log(`------------------------------------- Scraping  ${hour} ---------------------------------------`)
-  await runSpiders()
+  const notFound = await runSpiders()
   if (isSaturday() && hour === TimeHour.PM_2) {
     //! Send Email
   }
+  console.log('Not found products:', notFound.length)
   console.log('------------------------------------ Scraping Finished --------------------------------------')
 }
 
