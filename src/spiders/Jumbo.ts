@@ -44,8 +44,6 @@ export class Jumbo implements Spider {
     const updatedProducts: Updater[] = []
     const urlProducts: string[] = []
 
-    console.log(products.length)
-
     for (const product of products) {
       if (product.linkText === undefined) continue
 
@@ -94,7 +92,9 @@ export class Jumbo implements Spider {
       return scraped
     }))
 
+    console.log(`Scraping ${products.length}`)
     const productsFiltered = products.filter(product => product !== undefined) as Scraper[]
+    console.log(`Filtereds ${productsFiltered.length}`)
 
     return [productsFiltered.filter(p => !p.isIncomplete()), productsFiltered.filter(p => p.isIncomplete())]
   }

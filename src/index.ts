@@ -1,8 +1,9 @@
 import { scheduleJob } from 'node-schedule'
 import { ENVIRONMENT } from './config'
-import { ScheduleHour, TimeHour } from './utils/enums'
+import { ScheduleHour, TimeHour, TimeUnit } from './utils/enums'
 import { isSaturday } from './utils/time'
 import { runSpiders } from './run-spiders'
+import { sleep } from 'bun'
 
 console.log('Starting App')
 console.log('Environment:', ENVIRONMENT)
@@ -26,4 +27,5 @@ scheduleJob(ScheduleHour.PM_4, async () => await scraping(TimeHour.PM_4))
 scheduleJob(ScheduleHour.PM_6, async () => await scraping(TimeHour.PM_6))
 
 // ? Testing
+await sleep(1 * TimeUnit.MIN)
 await scraping(TimeHour.AM_8)
