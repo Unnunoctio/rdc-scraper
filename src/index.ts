@@ -1,13 +1,19 @@
 import { scheduleJob } from 'node-schedule'
 import { ENVIRONMENT } from './config'
 import { ScheduleHour, TimeHour } from './utils/enums'
+import { isSaturday } from './utils/time'
+import { runSpiders } from './run-spiders'
 
 console.log('Starting App')
 console.log('Environment:', ENVIRONMENT)
 
-// TODO: Scraping Funcion
+// TODO: Scraping Function
 const scraping = async (hour: TimeHour): Promise<void> => {
   console.log(`------------------------------------- Scraping  ${hour} ---------------------------------------`)
+  await runSpiders()
+  if (isSaturday() && hour === TimeHour.PM_2) {
+    //! Send Email
+  }
   console.log('------------------------------------ Scraping Finished --------------------------------------')
 }
 
