@@ -86,3 +86,13 @@ export interface ExcelFile {
 export interface DrinksApi {
   drinks: Drink[]
 }
+
+// Proxy
+export interface Proxy {
+  protocol: string
+  ip: string
+  port: number
+  anonyme: string
+  ssl: boolean
+  proxy: string
+}
