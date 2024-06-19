@@ -58,8 +58,10 @@ export class Jumbo implements Spider {
       if (updated.isComplete()) updatedProducts.push(updated)
     }
 
-    // const [completeProducts, incompleteProducts] = await this.getUnitaryProducts(urlProducts)
-    await this.getUnitaryProducts(urlProducts)
+    console.log(`Getting ${urlProducts.length} products`)
+    const [completeProducts, incompleteProducts] = await this.getUnitaryProducts(urlProducts)
+    console.log(`Completes ${completeProducts.length}`)
+    console.log(`Incompletes ${incompleteProducts.length}`)
 
     return [[], [], []]
   }
@@ -83,15 +85,18 @@ export class Jumbo implements Spider {
   }
 
   async getUnitaryProducts (urls: string[]): Promise<[Scraper[], Scraper[]]> {
-    console.log(`Getting ${urls.length} products`)
-    const products = (await Promise.all(urls.map(async (url) => {
-      return await this.getProduct(url)
-    }))).flat()
+    const products = await Promise.all(urls.map(async (url) => {
+      const product = await this.getProduct(url)
+      if (product === undefined) return undefined
 
-    console.log(products.filter(p => p !== undefined).length)
-    console.log(products.filter(p => p === undefined).length)
+      const scraped = new Scraper(this.info.name)
+      scraped.setCencosudData(product, this.pageUrl)
+      return scraped
+    }))
 
-    return [[], []]
+    const productsFiltered = products.filter(product => product !== undefined) as Scraper[]
+
+    return [productsFiltered.filter(p => !p.isIncomplete()), productsFiltered.filter(p => p.isIncomplete())]
   }
 
   async getProduct (url: string): Promise<CencosudProduct | undefined> {
