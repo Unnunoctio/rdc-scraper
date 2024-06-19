@@ -5,14 +5,16 @@
   "devDependencies": {
     "@types/bun": "latest",
     "@types/node-schedule": "2.1.7",
-    "mongodb": "6.7.0",
     "ts-standard": "12.0.2"
   },
   "peerDependencies": {
     "typescript": "5.0.0"
   },
   "dependencies": {
-    "node-schedule": "2.1.1"
+    "exceljs": "4.4.0",
+    "mongodb": "6.7.0",
+    "node-schedule": "2.1.1",
+    "resend": "3.3.0"
   },
   "eslintConfig": {
     "parserOptions": {
