@@ -1,8 +1,8 @@
-import { sleep } from 'bun'
 import type { Scraper } from './classes'
 import type { Spider } from './spiders/types'
-import { SpiderName, TimeUnit } from './utils/enums'
-import { Jumbo, Santa } from './spiders'
+import { SpiderName } from './utils/enums'
+import { Jumbo, Lider, Santa } from './spiders'
+import { sleepBetweenSpiders, sleepStartEndSpiders } from './utils/time'
 
 const runSpider = async (spider: Spider, name: SpiderName, paths: string[], watcher: number): Promise<Scraper[]> => {
   console.time(`${name} Scraping`)
@@ -20,27 +20,25 @@ export const runSpiders = async (): Promise<Scraper[]> => {
   const notFound: Scraper[] = []
 
   console.log('Watcher:', watcher)
-  console.log('---------------------------------------------------------------------------------------------')
-  await sleep(5 * TimeUnit.SEC)
+  await sleepStartEndSpiders()
 
   // TODO: JUMBO
   const jumboNotFound = await runSpider(new Jumbo(), SpiderName.JUMBO, [], watcher)
   notFound.push(...jumboNotFound)
 
-  await sleep(5 * TimeUnit.SEC)
-  console.log('---------------------------------------------------------')
-  await sleep(20 * TimeUnit.SEC)
+  await sleepBetweenSpiders()
 
   // TODO: SANTA
   const santaNotFound = await runSpider(new Santa(), SpiderName.SANTA, [], watcher)
   notFound.push(...santaNotFound)
 
-  await sleep(5 * TimeUnit.SEC)
-  console.log('---------------------------------------------------------')
-  await sleep(20 * TimeUnit.SEC)
+  await sleepBetweenSpiders()
 
   // TODO: LIDER
-  console.log('---------------------------------------------------------------------------------------------')
+  const liderNotFound = await runSpider(new Lider(), SpiderName.LIDER, [], watcher)
+  notFound.push(...liderNotFound)
+
+  await sleepStartEndSpiders()
 
   return notFound
 }
