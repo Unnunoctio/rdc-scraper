@@ -56,17 +56,7 @@ export class Jumbo implements Spider {
       if (updated.isComplete()) updatedProducts.push(updated)
     }
 
-    console.log('total products:', urlProducts)
     const [completeProducts, incompleteProducts] = await this.getUnitaryProducts(urlProducts)
-    console.log('complete products:', completeProducts.length)
-    console.log('incomplete products:', incompleteProducts.length)
-
-    console.log('--------------------------------')
-    const [com, incom] = await this.getIncompletes(urlProducts)
-    console.log('complete products lento:', com.length)
-    console.log('incomplete products lento:', incom.length)
-
-    console.log('--------------------------------')
 
     await this.getAverages(updatedProducts)
     await this.getAverages(completeProducts)
@@ -129,40 +119,6 @@ export class Jumbo implements Spider {
     } catch (error) {
       console.error('Error when obtaining averages')
     }
-  }
-  // endregion
-
-  // region Test
-  splitArray (arr: string[]): string[][] {
-    const chunks: string[][] = []
-    for (let i = 0; i < arr.length; i += 300) {
-      chunks.push(arr.slice(i, i + 300))
-    }
-    return chunks
-  }
-
-  async getIncompletes (urls: string[]): Promise<[Scraper[], Scraper[]]> {
-    const splitUrls = this.splitArray(urls)
-
-    const allProducts: CencosudProduct[] = []
-    for (const urls of splitUrls) {
-      await new Promise(resolve => setTimeout(resolve, 5000))
-
-      const products = await Promise.all(urls.map(async (url) => {
-        return await this.getProduct(url)
-      }))
-
-      allProducts.push(...products.filter(p => p !== undefined) as CencosudProduct[])
-    }
-
-    const scrapedProducts: Scraper[] = []
-    for (const product of allProducts) {
-      const scraped = new Scraper(this.info.name)
-      scraped.setCencosudData(product, this.pageUrl)
-      scrapedProducts.push(scraped)
-    }
-
-    return [scrapedProducts.filter(s => !s.isIncomplete()), scrapedProducts.filter(s => s.isIncomplete())]
   }
   // endregion
 }
