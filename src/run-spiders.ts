@@ -27,15 +27,17 @@ export const runSpiders = async (): Promise<Scraper[]> => {
   const jumboNotFound = await runSpider(new Jumbo(), SpiderName.JUMBO, [], watcher)
   notFound.push(...jumboNotFound)
 
+  await sleep(5 * TimeUnit.SEC)
   console.log('---------------------------------------------------------')
-  await sleep(30 * TimeUnit.SEC)
+  await sleep(20 * TimeUnit.SEC)
 
   // TODO: SANTA
   const santaNotFound = await runSpider(new Santa(), SpiderName.SANTA, [], watcher)
   notFound.push(...santaNotFound)
 
+  await sleep(5 * TimeUnit.SEC)
   console.log('---------------------------------------------------------')
-  await sleep(30 * TimeUnit.SEC)
+  await sleep(20 * TimeUnit.SEC)
 
   // TODO: LIDER
   console.log('---------------------------------------------------------------------------------------------')
