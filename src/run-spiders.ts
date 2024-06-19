@@ -25,8 +25,8 @@ export const runSpiders = async (): Promise<Scraper[]> => {
   const jumboNotFound = await runSpider(new Jumbo(), SpiderName.JUMBO, [], watcher)
   notFound.push(...jumboNotFound)
 
-  console.log('---------------------------------------------------------------------------------------------')
   await sleep(5 * TimeUnit.SEC)
+  console.log('---------------------------------------------------------------------------------------------')
 
   return notFound
 }

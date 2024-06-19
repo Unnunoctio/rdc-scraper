@@ -1,5 +1,5 @@
 import type { Info } from '../types'
-import type { CencosudProduct, CencosudResponse, Spider } from './types'
+import type { CencosudAverage, CencosudProduct, CencosudResponse, Spider } from './types'
 import { SpiderName } from '../utils/enums'
 import { Scraper, Updater } from '../classes'
 
@@ -56,12 +56,22 @@ export class Jumbo implements Spider {
       if (updated.isComplete()) updatedProducts.push(updated)
     }
 
-    console.log(`Getting ${urlProducts.length} products`)
+    console.log('total products:', urlProducts)
     const [completeProducts, incompleteProducts] = await this.getUnitaryProducts(urlProducts)
-    console.log(`Completes ${completeProducts.length}`)
-    console.log(`Incompletes ${incompleteProducts.length}`)
+    console.log('complete products:', completeProducts.length)
+    console.log('incomplete products:', incompleteProducts.length)
 
-    return [[], [], []]
+    console.log('--------------------------------')
+    const [com, incom] = await this.getIncompletes(urlProducts)
+    console.log('complete products lento:', com.length)
+    console.log('incomplete products lento:', incom.length)
+
+    console.log('--------------------------------')
+
+    await this.getAverages(updatedProducts)
+    await this.getAverages(completeProducts)
+
+    return [updatedProducts, completeProducts, incompleteProducts]
   }
   // endregion
 
@@ -92,10 +102,7 @@ export class Jumbo implements Spider {
       return scraped
     }))
 
-    console.log(`Scraping ${products.length}`)
     const productsFiltered = products.filter(product => product !== undefined) as Scraper[]
-    console.log(`Filtereds ${productsFiltered.length}`)
-
     return [productsFiltered.filter(p => !p.isIncomplete()), productsFiltered.filter(p => p.isIncomplete())]
   }
 
@@ -105,9 +112,57 @@ export class Jumbo implements Spider {
       const data: CencosudProduct[] = await res.json()
       return data[0]
     } catch (error) {
-      console.error(`Error al hacer fetch: ${url}`)
+      console.error(`Error in fetch: ${url}`)
       return undefined
     }
+  }
+
+  async getAverages (items: Updater[] | Scraper[]): Promise<void> {
+    const skus = items.map((i: any) => i.productSku).join(',')
+    try {
+      const res = await fetch(`${this.averageUrl}?ids=${skus}`, { headers: this.headers })
+      const data: CencosudAverage[] = await res.json()
+      for (const item of items) {
+        const average = data.find(a => a.id === item.productSku)
+        if (average !== undefined && average.totalCount !== 0) item.average = average.average
+      }
+    } catch (error) {
+      console.error('Error when obtaining averages')
+    }
+  }
+  // endregion
+
+  // region Test
+  splitArray (arr: string[]): string[][] {
+    const chunks: string[][] = []
+    for (let i = 0; i < arr.length; i += 300) {
+      chunks.push(arr.slice(i, i + 300))
+    }
+    return chunks
+  }
+
+  async getIncompletes (urls: string[]): Promise<[Scraper[], Scraper[]]> {
+    const splitUrls = this.splitArray(urls)
+
+    const allProducts: CencosudProduct[] = []
+    for (const urls of splitUrls) {
+      await new Promise(resolve => setTimeout(resolve, 5000))
+
+      const products = await Promise.all(urls.map(async (url) => {
+        return await this.getProduct(url)
+      }))
+
+      allProducts.push(...products.filter(p => p !== undefined) as CencosudProduct[])
+    }
+
+    const scrapedProducts: Scraper[] = []
+    for (const product of allProducts) {
+      const scraped = new Scraper(this.info.name)
+      scraped.setCencosudData(product, this.pageUrl)
+      scrapedProducts.push(scraped)
+    }
+
+    return [scrapedProducts.filter(s => !s.isIncomplete()), scrapedProducts.filter(s => s.isIncomplete())]
   }
   // endregion
 }
