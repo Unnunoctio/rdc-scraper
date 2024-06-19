@@ -49,7 +49,10 @@ export class Jumbo implements Spider {
 
       const path = `${this.pageUrl}/${product.linkText}/p`
       if (this.blockUrls.includes(path)) continue
-      if (!paths.includes(path)) urlProducts.push(`${this.productUrl}/${product.linkText}`)
+      if (!paths.includes(path)) {
+        urlProducts.push(`${this.productUrl}/${product.linkText}`)
+        continue
+      }
 
       const updated = new Updater()
       updated.setCencosudData(product, this.pageUrl)
