@@ -47,7 +47,7 @@ export class Santa implements Spider {
     const urlProducts: string[] = []
 
     for (const product of products) {
-      if (product.linkText === undefined) continue
+      if (product === undefined || product.linkText === undefined) continue
 
       const path = `${this.pageUrl}/${product.linkText}/p`
       if (this.blockUrls.includes(path)) continue

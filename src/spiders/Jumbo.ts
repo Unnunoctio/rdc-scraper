@@ -32,7 +32,6 @@ export class Jumbo implements Spider {
   // region RUN
   async run (paths: string[]): Promise<[Updater[], Scraper[], Scraper[]]> {
     console.log(`Running ${SpiderName.JUMBO} Spider`)
-    console.log(paths.length)
 
     const pages = (await Promise.all(this.startUrls.map(async (url) => {
       return await this.getPages(url)
@@ -46,7 +45,7 @@ export class Jumbo implements Spider {
     const urlProducts: string[] = []
 
     for (const product of products) {
-      if (product.linkText === undefined) continue
+      if (product === undefined || product.linkText === undefined) continue
 
       const path = `${this.pageUrl}/${product.linkText}/p`
       if (this.blockUrls.includes(path)) continue

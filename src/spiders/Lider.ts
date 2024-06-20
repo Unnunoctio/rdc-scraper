@@ -64,7 +64,7 @@ export class Lider implements Spider {
     const incompleteProducts: Scraper[] = []
 
     for (const product of products) {
-      if (product.sku === undefined) continue
+      if (product === undefined || product.sku === undefined) continue
 
       const path = `${this.pageUrl}/supermercado/product/sku/${product.sku}`
       if (this.blockUrls.includes(path)) continue
