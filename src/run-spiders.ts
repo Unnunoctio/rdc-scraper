@@ -14,12 +14,13 @@ import { Jumbo, Lider, Santa } from './spiders'
 const runSpider = async (db: Db, spider: Spider, name: SpiderName, paths: string[], drinks: DrinkDB[], watcher: number): Promise<Scraper[]> => {
   console.time(`${name} Scraping`)
   const [updated, completed, incompleted] = await spider.run(paths)
-  await updateManyWebsites(db, updated, watcher)
-  const notFound = await saveManyProducts(db, completed, drinks, spider.info, watcher)
+  // await updateManyWebsites(db, updated, watcher)
+  // const notFound = await saveManyProducts(db, completed, drinks, spider.info, watcher)
   console.timeEnd(`${name} Scraping`)
 
   console.log(`Updated: ${updated.length}  -  Completed: ${completed.length}  -  Incompleted: ${incompleted.length}`)
-  return [...notFound, ...incompleted]
+  // return [...notFound, ...incompleted]
+  return []
 }
 
 export const runSpiders = async (): Promise<Scraper[]> => {
@@ -29,19 +30,15 @@ export const runSpiders = async (): Promise<Scraper[]> => {
   const paths = await getAllPaths(db)
   const drinks = await saveManyDrinks(db)
 
-  console.log(paths)
-  console.log(paths.length)
-  console.log(drinks.length)
+  const watcher = new Date().getTime()
+  const notFound: Scraper[] = []
 
-  // const watcher = new Date().getTime()
-  // const notFound: Scraper[] = []
+  console.log('Watcher:', watcher)
+  await sleepStartEndSpiders()
 
-  // console.log('Watcher:', watcher)
-  // await sleepStartEndSpiders()
-
-  // // TODO: JUMBO
-  // const jumboNotFound = await runSpider(db, new Jumbo(), SpiderName.JUMBO, paths, drinks, watcher)
-  // notFound.push(...jumboNotFound)
+  // TODO: JUMBO
+  const jumboNotFound = await runSpider(db, new Jumbo(), SpiderName.JUMBO, paths, drinks, watcher)
+  notFound.push(...jumboNotFound)
 
   // await sleepBetweenSpiders()
 
@@ -55,13 +52,12 @@ export const runSpiders = async (): Promise<Scraper[]> => {
   // const liderNotFound = await runSpider(db, new Lider(), SpiderName.LIDER, paths, drinks, watcher)
   // notFound.push(...liderNotFound)
 
-  // await sleepStartEndSpiders()
+  await sleepStartEndSpiders()
 
   // // TODO: UPDATE DB && DISCONNECT
   // await updateWebsitesWithoutStock(db, watcher)
   // await deleteManyDrinks(db)
   await dbDisconnect()
 
-  // return notFound
-  return []
+  return notFound
 }
