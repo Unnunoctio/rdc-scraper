@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import type { Db } from 'mongodb'
 import type { DrinkDB } from './types'
 import type { Scraper } from './classes'
@@ -28,34 +29,39 @@ export const runSpiders = async (): Promise<Scraper[]> => {
   const paths = await getAllPaths(db)
   const drinks = await saveManyDrinks(db)
 
-  const watcher = new Date().getTime()
-  const notFound: Scraper[] = []
+  console.log(paths)
+  console.log(paths.length)
+  console.log(drinks.length)
 
-  console.log('Watcher:', watcher)
-  await sleepStartEndSpiders()
+  // const watcher = new Date().getTime()
+  // const notFound: Scraper[] = []
 
-  // TODO: JUMBO
-  const jumboNotFound = await runSpider(db, new Jumbo(), SpiderName.JUMBO, paths, drinks, watcher)
-  notFound.push(...jumboNotFound)
+  // console.log('Watcher:', watcher)
+  // await sleepStartEndSpiders()
 
-  await sleepBetweenSpiders()
+  // // TODO: JUMBO
+  // const jumboNotFound = await runSpider(db, new Jumbo(), SpiderName.JUMBO, paths, drinks, watcher)
+  // notFound.push(...jumboNotFound)
 
-  // TODO: SANTA
-  const santaNotFound = await runSpider(db, new Santa(), SpiderName.SANTA, paths, drinks, watcher)
-  notFound.push(...santaNotFound)
+  // await sleepBetweenSpiders()
 
-  await sleepBetweenSpiders()
+  // // TODO: SANTA
+  // const santaNotFound = await runSpider(db, new Santa(), SpiderName.SANTA, paths, drinks, watcher)
+  // notFound.push(...santaNotFound)
 
-  // TODO: LIDER
-  const liderNotFound = await runSpider(db, new Lider(), SpiderName.LIDER, paths, drinks, watcher)
-  notFound.push(...liderNotFound)
+  // await sleepBetweenSpiders()
 
-  await sleepStartEndSpiders()
+  // // TODO: LIDER
+  // const liderNotFound = await runSpider(db, new Lider(), SpiderName.LIDER, paths, drinks, watcher)
+  // notFound.push(...liderNotFound)
 
-  // TODO: UPDATE DB && DISCONNECT
-  await updateWebsitesWithoutStock(db, watcher)
-  await deleteManyDrinks(db)
+  // await sleepStartEndSpiders()
+
+  // // TODO: UPDATE DB && DISCONNECT
+  // await updateWebsitesWithoutStock(db, watcher)
+  // await deleteManyDrinks(db)
   await dbDisconnect()
 
-  return notFound
+  // return notFound
+  return []
 }
