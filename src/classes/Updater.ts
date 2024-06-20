@@ -12,7 +12,7 @@ export class Updater {
   }
 
   public isComplete (): boolean {
-    return this.productSku !== undefined && this.url !== undefined && this.price !== undefined && this.price > 0 && this.bestPrice !== undefined && this.bestPrice > 0 && this.average !== null
+    return this.productSku !== undefined && this.url !== undefined && this.price !== undefined && this.price > 0 && this.bestPrice !== undefined && this.bestPrice > 0
   }
 
   public setCencosudData (data: CencosudProduct, pageUrl: string): void {
