@@ -50,14 +50,15 @@ export class Jumbo implements Spider {
 
       const path = `${this.pageUrl}/${product.linkText}/p`
       if (this.blockUrls.includes(path)) continue
-      if (!paths.includes(path)) {
-        urlProducts.push(`${this.productUrl}/${product.linkText}`)
+
+      if (paths.includes(path)) {
+        const updated = new Updater()
+        updated.setCencosudData(product, this.pageUrl)
+        if (updated.isComplete()) updatedProducts.push(updated)
         continue
       }
 
-      const updated = new Updater()
-      updated.setCencosudData(product, this.pageUrl)
-      if (updated.isComplete()) updatedProducts.push(updated)
+      urlProducts.push(`${this.productUrl}/${product.linkText}`)
     }
 
     const [completeProducts, incompleteProducts] = await this.getUnitaryProducts(urlProducts)
