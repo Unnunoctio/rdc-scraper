@@ -1,23 +1,25 @@
 import { scheduleJob } from 'node-schedule'
 import { ENVIRONMENT } from './config'
-import { ScheduleHour, TimeHour, TimeUnit } from './utils/enums'
-import { isSaturday, sleepAndGC } from './utils/time'
-import { runSpiders } from './run-spiders'
-import { sleep } from 'bun'
 import type { Scraper } from './classes'
+import { ScheduleHour, TimeHour } from './utils/enums'
+import { isSaturday, sleepAndGC } from './utils/time'
+import { cloudinaryConnect } from './utils/cloudinary'
 import { sendEmail } from './utils/resend'
+import { runSpiders } from './run-spiders'
 
 console.log('Starting App')
 console.log('Environment:', ENVIRONMENT)
+
+// TODO: Connect to Cloudinary
+cloudinaryConnect()
 
 // TODO: Scraping Function
 const scraping = async (hour: TimeHour): Promise<void> => {
   console.log(`------------------------------------- Scraping  ${hour} ---------------------------------------`)
   let notFound: Scraper[] | undefined = await runSpiders()
   if (isSaturday() && hour === TimeHour.PM_2) {
-    // pass
+    await sendEmail(notFound)
   }
-  await sendEmail(notFound)
   console.log('------------------------------------ Scraping Finished --------------------------------------')
 
   notFound = undefined
@@ -31,7 +33,3 @@ scheduleJob(ScheduleHour.PM_12, async () => await scraping(TimeHour.PM_12))
 scheduleJob(ScheduleHour.PM_2, async () => await scraping(TimeHour.PM_2))
 scheduleJob(ScheduleHour.PM_4, async () => await scraping(TimeHour.PM_4))
 scheduleJob(ScheduleHour.PM_6, async () => await scraping(TimeHour.PM_6))
-
-// ? Testing
-await sleep(1 * TimeUnit.MIN)
-await scraping(TimeHour.AM_8)
