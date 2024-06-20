@@ -33,6 +33,3 @@ scheduleJob(ScheduleHour.PM_12, async () => await scraping(TimeHour.PM_12))
 scheduleJob(ScheduleHour.PM_2, async () => await scraping(TimeHour.PM_2))
 scheduleJob(ScheduleHour.PM_4, async () => await scraping(TimeHour.PM_4))
 scheduleJob(ScheduleHour.PM_6, async () => await scraping(TimeHour.PM_6))
-
-// ? Teste Code
-await scraping(TimeHour.AM_8)
