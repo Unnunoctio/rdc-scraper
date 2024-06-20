@@ -1,6 +1,6 @@
-import { UploadApiResponse, v2 as cloudinary } from 'cloudinary'
-import { Image } from '../types'
-import { CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET, CLOUDINARY_NAME } from '../config.js'
+import { v2 as cloudinary, type UploadApiResponse } from 'cloudinary'
+import { CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET, CLOUDINARY_NAME } from '../config'
+import type { Image } from '../types'
 
 export const cloudinaryConnect = (): void => {
   cloudinary.config({
@@ -8,17 +8,17 @@ export const cloudinaryConnect = (): void => {
     api_key: CLOUDINARY_API_KEY,
     api_secret: CLOUDINARY_API_SECRET
   })
-  console.log('Conectado a Cloudinary')
+  console.log('Conected to cloudinary')
 }
 
 export const uploadImages = async (imageUrl: string, category: string, brand: string, sku: number): Promise<Image> => {
-  // obtener la imagen
+  // TODO: Get product image
   const res = await fetch(imageUrl)
   const data = Buffer.from(await res.arrayBuffer())
 
   const folder = `${category.toLowerCase()}/${brand.toLowerCase().replaceAll('/', '-')}`
 
-  // subir las imagenes
+  // TODO: Upload images
   const small = await getImage(data, folder, `${sku}-200`, '200')
   const large = await getImage(data, folder, `${sku}-600`, '600')
 
@@ -51,7 +51,7 @@ const getImage = async (image: Buffer, folder: string, name: string, size: strin
       // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
       if (upload.secure_url) return upload.secure_url
     } catch (error) {
-      console.log('Error al subir la imagen en cloudinary')
+      console.log('Error uploading image to cloudinary')
     }
   }
 }

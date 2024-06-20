@@ -1,5 +1,5 @@
-import { Db, ObjectId } from 'mongodb'
-import { Record } from '../types'
+import type { Db, ObjectId } from 'mongodb'
+import type { Record } from '../types'
 
 export const saveRecord = async (db: Db, price: number): Promise<ObjectId | undefined> => {
   try {
@@ -10,7 +10,7 @@ export const saveRecord = async (db: Db, price: number): Promise<ObjectId | unde
     const newRecord = await collection.insertOne({ date: currentDate, price })
     return newRecord.insertedId
   } catch (error) {
-    console.error('Error al guardar el record')
+    console.error('Error saving record')
     return undefined
   }
 }
@@ -32,7 +32,7 @@ export const saveOrUpdateRecord = async (db: Db, lastRecordId: ObjectId, price: 
     const newRecord = await collection.insertOne({ date: currentDate, price })
     return newRecord.insertedId
   } catch (error) {
-    console.error('Error al guardar o actualizar el record')
+    console.error('Error saving or updating the record')
     return undefined
   }
 }

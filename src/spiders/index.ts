@@ -1,3 +1,3 @@
-export { Jumbo } from './Jumbo.js'
-export { Santa } from './Santa.js'
-export { Lider } from './Lider.js'
+export { Jumbo } from './Jumbo'
+export { Santa } from './Santa'
+export { Lider } from './Lider'

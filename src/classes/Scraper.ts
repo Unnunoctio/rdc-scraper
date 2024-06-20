@@ -1,4 +1,4 @@
-import { CencosudProduct, LiderProduct, LiderSpecification } from '../spiders/types'
+import type { CencosudProduct, LiderProduct, LiderSpecification } from '../spiders/types'
 
 export class Scraper {
   website: string
@@ -22,10 +22,7 @@ export class Scraper {
   }
 
   public isIncomplete (): boolean {
-    if (this.productSku === undefined || this.title === undefined || this.brand === undefined || this.category === undefined || this.url === undefined || this.price === undefined || this.price === 0 || this.bestPrice === undefined || this.bestPrice === 0 || this.image === undefined || this.alcoholicGrade === undefined || this.content === undefined || this.quantity === undefined || this.package === undefined) {
-      return true
-    }
-    return false
+    return this.productSku === undefined || this.title === undefined || this.brand === undefined || this.category === undefined || this.url === undefined || this.price === undefined || this.price === 0 || this.bestPrice === undefined || this.bestPrice === 0 || this.image === undefined || this.alcoholicGrade === undefined || this.content === undefined || this.quantity === undefined || this.package === undefined
   }
 
   public setCencosudData (data: CencosudProduct, pageUrl: string): void {

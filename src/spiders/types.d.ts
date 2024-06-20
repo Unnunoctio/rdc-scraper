@@ -1,5 +1,5 @@
-import { Scraper } from '../classes/Scraper'
-import { Info } from '../types'
+import type { Scraper, Updater } from '../classes'
+import type { Info } from '../types'
 
 // Spider
 export interface Spider {

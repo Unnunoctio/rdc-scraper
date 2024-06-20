@@ -1,10 +1,10 @@
-import { Db, ObjectId } from 'mongodb'
-import { DrinkDB, Info, Product } from '../types'
-import { getInfo } from './infos.js'
-import { getDrink } from './drinks.js'
-import { deleteWebsite, saveWebsite } from './websites.js'
-import { deleteImage, saveImage } from './images.js'
-import { Scraper } from '../classes/Scraper.js'
+import type { Db, ObjectId } from 'mongodb'
+import type { DrinkDB, Info, Product } from '../types'
+import type { Scraper } from '../classes'
+import { getInfo } from './infos'
+import { getDrink } from './drinks'
+import { deleteImage, saveImage } from './images'
+import { deleteWebsite, saveWebsite } from './websites'
 
 export const getDrinkInProducts = async (db: Db): Promise<ObjectId[]> => {
   try {
@@ -13,7 +13,7 @@ export const getDrinkInProducts = async (db: Db): Promise<ObjectId[]> => {
 
     return products.map(product => product.drink)
   } catch (error) {
-    console.error('Error al obtener los drinks ids in products')
+    console.error('Error when obtaining drinks ids in products')
     return []
   }
 }
@@ -66,7 +66,7 @@ export const saveManyProducts = async (db: Db, products: Scraper[], drinks: Drin
 
       return p
     } catch (error) {
-      console.error('Error al guardar el producto', p.title, error)
+      console.error('Error saving product:', p.title, error)
       return p
     }
   }))

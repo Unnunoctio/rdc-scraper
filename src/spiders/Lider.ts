@@ -1,12 +1,12 @@
-import { Info } from '../types'
-import { LiderBody, LiderProduct, LiderResponse, Spider } from './types'
-import { Scraper } from '../classes/Scraper.js'
-import { Updater } from '../classes/Updater.js'
+import type { Info } from '../types'
+import type { LiderBody, LiderProduct, LiderResponse, Spider } from './types'
+import { SpiderName } from '../utils/enums'
+import { Scraper, Updater } from '../classes'
 
 export class Lider implements Spider {
   // region Metadata
   info: Info = {
-    name: 'Lider',
+    name: SpiderName.LIDER,
     logo: 'https://www.walmartchile.cl/wp-content/themes/walmartchile/img/favicon-32x32.png'
   }
 
@@ -60,17 +60,13 @@ export class Lider implements Spider {
     }))).flat()
 
     const updatedProducts: Updater[] = []
-    const scrapedProducts: Scraper[] = []
+    const completeProducts: Scraper[] = []
     const incompleteProducts: Scraper[] = []
 
     for (const product of products) {
-      let path: string | undefined
-      try {
-        path = `${this.pageUrl}/supermercado/product/sku/${product.sku}`
-      } catch (error) {
-        console.error('Error al generar el path:', product.displayName)
-      }
-      if (path === undefined) continue
+      if (product === undefined || product.sku === undefined) continue
+
+      const path = `${this.pageUrl}/supermercado/product/sku/${product.sku}`
       if (this.blockUrls.includes(path)) continue
 
       if (paths.includes(path)) {
@@ -88,10 +84,10 @@ export class Lider implements Spider {
         continue
       }
 
-      scrapedProducts.push(scraped)
+      completeProducts.push(scraped)
     }
 
-    return [updatedProducts, scrapedProducts, incompleteProducts]
+    return [updatedProducts, completeProducts, incompleteProducts]
   }
   // endregion
 

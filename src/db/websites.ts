@@ -1,8 +1,7 @@
-import { Db, ObjectId } from 'mongodb'
-import { Website, WebsiteDB } from '../types'
-import { saveOrUpdateRecord, saveRecord } from './records.js'
-import { Updater } from '../classes/Updater.js'
-import { Scraper } from '../classes/Scraper.js'
+import type { Db, ObjectId } from 'mongodb'
+import type { Website, WebsiteDB } from '../types'
+import type { Scraper, Updater } from '../classes'
+import { saveOrUpdateRecord, saveRecord } from './records'
 
 export const getAllPaths = async (db: Db): Promise<string[]> => {
   try {
@@ -11,7 +10,7 @@ export const getAllPaths = async (db: Db): Promise<string[]> => {
 
     return websites.map((website) => website.path)
   } catch (error) {
-    console.error('Error al obtener los paths de los websites')
+    console.error('Error when obtaining website paths')
     return []
   }
 }
@@ -40,7 +39,7 @@ export const saveWebsite = async (db: Db, product: Scraper, infoId: ObjectId, wa
 
     return newWebsite.insertedId
   } catch (error) {
-    console.error('Error al guardar el website ', product.url)
+    console.error('Error when saving the website:', product.url)
     return undefined
   }
 }
@@ -73,11 +72,11 @@ export const updateManyWebsites = async (db: Db, updates: Updater[], watcher: nu
           )
         }
       } catch (error) {
-        console.error('Error al actualizar el website ', update.url, error)
+        console.error('Error updating the website', update.url, error)
       }
     }))
   } catch (error) {
-    console.error('Error al obtener la colección de los websites')
+    console.error('Error when obtaining the collection from the websites')
   }
 }
 
@@ -89,7 +88,7 @@ export const updateWebsitesWithoutStock = async (db: Db, watcher: number): Promi
       { $set: { price: 0, best_price: 0, in_stock: false } }
     )
   } catch (error) {
-    console.error('Error al limpiar los websites sin stock')
+    console.error('Error when cleaning websites out of stock')
   }
 }
 
@@ -100,6 +99,6 @@ export const deleteWebsite = async (db: Db, websiteId: ObjectId | undefined): Pr
     const collection = db.collection<Website>('websites')
     await collection.deleteOne({ _id: websiteId })
   } catch (error) {
-    console.error('Error al eliminar el website ', websiteId)
+    console.error('Error when deleting the website:', websiteId)
   }
 }

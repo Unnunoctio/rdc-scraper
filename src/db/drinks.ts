@@ -1,8 +1,8 @@
-import { Db } from 'mongodb'
-import { Drink, DrinkDB } from '../types.js'
-import { getDrinkInProducts } from './products.js'
-import { getDrinksApi } from '../utils/drinksApi.js'
-import { Scraper } from '../classes/Scraper.js'
+import type { Db } from 'mongodb'
+import type { Drink, DrinkDB } from '../types'
+import type { Scraper } from '../classes'
+import { getDrinksApi } from '../utils/drinks-api'
+import { getDrinkInProducts } from './products'
 
 export const getDrink = (product: Scraper, drinks: DrinkDB[]): DrinkDB | undefined => {
   try {
@@ -26,7 +26,7 @@ export const getDrink = (product: Scraper, drinks: DrinkDB[]): DrinkDB | undefin
 
     return selectedDrink
   } catch (error) {
-    console.error('Error al obtener el drink', product.title)
+    console.error('Error getting the drink:', product.title)
     return undefined
   }
 }
@@ -39,7 +39,7 @@ const saveDrink = async (db: Db, drink: Drink): Promise<void> => {
 
     await collection.insertOne(drink)
   } catch (error) {
-    console.error(`Error al guardar el drink: ${drink.name}`)
+    console.error(`Error saving drink: ${drink.name}`)
   }
 }
 
@@ -54,7 +54,7 @@ export const saveManyDrinks = async (db: Db): Promise<DrinkDB[]> => {
     const collection = db.collection<Drink>('drinks')
     return await collection.find().toArray()
   } catch (error) {
-    console.error('Error al obtener los drinks guardados')
+    console.error('Error getting saved drinks')
     return []
   }
 }
@@ -66,6 +66,6 @@ export const deleteManyDrinks = async (db: Db): Promise<void> => {
 
     await collection.deleteMany({ _id: { $nin: drinksId } })
   } catch (error) {
-    console.error('Error al eliminar los drinks')
+    console.error('Error when deleting drinks')
   }
 }

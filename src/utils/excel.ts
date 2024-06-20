@@ -1,19 +1,13 @@
-import { Scraper } from '../classes/Scraper.js'
-import { ExcelFile } from '../types'
-import Excel from 'exceljs'
+import { Workbook } from 'exceljs'
+import type { Scraper } from '../classes'
+import type { ExcelFile } from '../types'
 
 export const createExcel = async (products: Scraper[], title: string): Promise<ExcelFile> => {
-  // Crear Excel
+  // TODO: Create Excel
   const filename = `${title}.xlsx`
-  const workbook = new Excel.Workbook()
+  const workbook = new Workbook()
 
-  const productsByBrand = products.reduce<{ [key: string]: Scraper[] }>((acc, product) => {
-    const brand = product.brand?.toLowerCase().replaceAll('/', '-') as string
-    // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-    if (!(acc[brand])) acc[brand] = []
-    acc[brand].push(product)
-    return acc
-  }, {})
+  const productsByBrand = Object.groupBy(products, ({ brand }) => brand?.toLowerCase().replaceAll('/', '-') as string)
 
   Object.keys(productsByBrand).forEach((brand) => {
     const worksheet = workbook.addWorksheet(brand)
@@ -21,19 +15,18 @@ export const createExcel = async (products: Scraper[], title: string): Promise<E
       { header: 'Website', key: 'website' },
       { header: 'Title', key: 'title' },
       { header: 'Brand', key: 'brand' },
-      { header: 'Url', key: 'url' },
       { header: 'Grade', key: 'alcoholicGrade' },
       { header: 'Content', key: 'content' },
       { header: 'Quantity', key: 'quantity' },
-      { header: 'Package', key: 'package' }
+      { header: 'Package', key: 'package' },
+      { header: 'Url', key: 'url' }
     ]
 
-    productsByBrand[brand].forEach(p => {
+    productsByBrand[brand]?.forEach(p => {
       worksheet.addRow(p)
     })
   })
 
   const buffer = await workbook.xlsx.writeBuffer()
-
-  return { filename, content: buffer as Buffer }
+  return { filename, content: buffer as unknown as Buffer }
 }
