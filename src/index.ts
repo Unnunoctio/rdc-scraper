@@ -1,28 +1,30 @@
 import { scheduleJob } from 'node-schedule'
-import { ENVIRONMENT } from './config'
-import type { Scraper } from './classes'
-import { ScheduleHour, TimeHour } from './utils/enums'
-import { isSaturday, sleepAndGC } from './utils/time'
-import { cloudinaryConnect } from './utils/cloudinary'
-import { sendEmail } from './utils/resend'
-import { runSpiders } from './run-spiders'
+import { v2 as cloudinary } from 'cloudinary'
+import { ScheduleHour, TimeHour } from './enums'
+import { CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET, CLOUDINARY_NAME, ENVIRONMENT } from './config'
+import { sleepAndGC } from './utils/time'
 
 console.log('Starting App')
 console.log('Environment:', ENVIRONMENT)
 
 // TODO: Connect to Cloudinary
-cloudinaryConnect()
+cloudinary.config({
+  cloud_name: CLOUDINARY_NAME,
+  api_key: CLOUDINARY_API_KEY,
+  api_secret: CLOUDINARY_API_SECRET
+})
+console.log('Connected to cloudinary')
 
 // TODO: Scraping Function
 const scraping = async (hour: TimeHour): Promise<void> => {
   console.log(`------------------------------------- Scraping  ${hour} ---------------------------------------`)
-  let notFound: Scraper[] | undefined = await runSpiders()
-  if (isSaturday() && hour === TimeHour.PM_2) {
-    await sendEmail(notFound)
-  }
+  // let notFound: Scraper[] | undefined = await runSpiders()
+  // if (isSaturday() && hour === TimeHour.PM_2) {
+  //   await sendEmail(notFound)
+  // }
   console.log('------------------------------------ Scraping Finished --------------------------------------')
 
-  notFound = undefined
+  // notFound = undefined
   await sleepAndGC()
 }
 

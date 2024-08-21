@@ -1,5 +1,4 @@
 export const DRINKS_API = Bun.env.DRINKS_API
-export const PROXIES_API = Bun.env.PROXIES_API
 export const DB_URI = Bun.env.DB_URI
 export const RESEND_KEY = Bun.env.RESEND_API_KEY
 export const CLOUDINARY_NAME = Bun.env.CLOUDINARY_NAME

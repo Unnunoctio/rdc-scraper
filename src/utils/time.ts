@@ -1,5 +1,5 @@
 import { sleep } from 'bun'
-import { TimeUnit } from './enums'
+import { TimeUnit } from '../enums'
 
 export const isSaturday = (): boolean => {
   const today = new Date()

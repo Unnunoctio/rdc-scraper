@@ -12,11 +12,12 @@
     "typescript": "5.0.0"
   },
   "dependencies": {
-    "cloudinary": "2.2.0",
-    "exceljs": "4.4.0",
-    "mongodb": "6.7.0",
+    "cloudinary": "2.4.0",
+    "mongoose": "8.5.3",
+    "nanoid": "5.0.7",
     "node-schedule": "2.1.1",
-    "resend": "3.3.0"
+    "resend": "3.3.0",
+    "xlsx": "0.18.5"
   },
   "eslintConfig": {
     "parserOptions": {
