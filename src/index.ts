@@ -1,11 +1,22 @@
-import { scheduleJob } from 'node-schedule'
+import mongoose from 'mongoose'
 import { v2 as cloudinary } from 'cloudinary'
+import { scheduleJob } from 'node-schedule'
 import { ScheduleHour, TimeHour } from './enums'
-import { CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET, CLOUDINARY_NAME, ENVIRONMENT } from './config'
+import { CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET, CLOUDINARY_NAME, DB_URI, ENVIRONMENT } from './config'
+import { drinkService } from './service/drink-service'
 import { sleepAndGC } from './utils/time'
 
 console.log('Starting App')
 console.log('Environment:', ENVIRONMENT)
+
+// TODO: Connect to Database
+try {
+  await mongoose.connect(DB_URI as string)
+  console.log('Connected to database')
+} catch (error) {
+  console.log('Error connecting to database', error)
+  process.exit(1)
+}
 
 // TODO: Connect to Cloudinary
 cloudinary.config({
@@ -18,6 +29,7 @@ console.log('Connected to cloudinary')
 // TODO: Scraping Function
 const scraping = async (hour: TimeHour): Promise<void> => {
   console.log(`------------------------------------- Scraping  ${hour} ---------------------------------------`)
+  await drinkService.saveManyDrinksByApi()
   // let notFound: Scraper[] | undefined = await runSpiders()
   // if (isSaturday() && hour === TimeHour.PM_2) {
   //   await sendEmail(notFound)
@@ -27,6 +39,9 @@ const scraping = async (hour: TimeHour): Promise<void> => {
   // notFound = undefined
   await sleepAndGC()
 }
+
+// ? TESTING
+await scraping(TimeHour.AM_8)
 
 // TODO: Schedules every 2 hours between 8 am to 6 pm in Chilean time
 scheduleJob(ScheduleHour.AM_8, async () => await scraping(TimeHour.AM_8))
