@@ -1,8 +1,13 @@
-import type { ObjectId } from 'mongoose'
 
 // BD
 export interface DrinkDB extends Drink {
-  _id: ObjectId
+  _id: String
+  createdAt?: Date
+  updatedAt?: Date
+}
+
+export interface InfoDB extends Info {
+  _id: String
   createdAt?: Date
   updatedAt?: Date
 }
@@ -23,6 +28,11 @@ export interface Drink {
   servingTemp?: string
   strain?: string
   vineyard?: string
+}
+
+export interface Info {
+  name: string
+  logo: string
 }
 
 // API
