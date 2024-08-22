@@ -4,7 +4,7 @@ const ALPHABET_HEX = '0123456789abcdef'
 const ALPHABET_DEC = '0123456789'
 
 const nanoUuid = customAlphabet(ALPHABET_HEX, 32)
-const nanoSku = customAlphabet(ALPHABET_DEC, 7)
+const nanoSku = customAlphabet(ALPHABET_DEC, 8)
 const nanoWatcher = customAlphabet(ALPHABET_DEC, 16)
 
 export const generateId = (): string => {
