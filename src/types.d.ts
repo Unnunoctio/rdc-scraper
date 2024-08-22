@@ -1,13 +1,19 @@
 
 // BD
 export interface DrinkDB extends Drink {
-  _id: String
+  _id: string
   createdAt?: Date
   updatedAt?: Date
 }
 
 export interface InfoDB extends Info {
-  _id: String
+  _id: string
+  createdAt?: Date
+  updatedAt?: Date
+}
+
+export interface ImageDB extends Image {
+  _id: string
   createdAt?: Date
   updatedAt?: Date
 }
@@ -33,6 +39,11 @@ export interface Drink {
 export interface Info {
   name: string
   logo: string
+}
+
+export interface Image {
+  small: string
+  large: string
 }
 
 // API
