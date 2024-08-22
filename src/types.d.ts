@@ -58,3 +58,9 @@ export interface DrinkApi {
   strain?: string
   vineyard?: string
 }
+
+// FILES
+export interface ExcelFile {
+  filename: string
+  content: Buffer
+}
