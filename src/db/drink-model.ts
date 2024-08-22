@@ -1,10 +1,10 @@
 import { Schema, model } from 'mongoose'
-import type { DrinkDB } from '../types'
 import { generateId } from '../utils/generation'
+import type { DrinkDB } from '../types'
 
 const DrinkSchema = new Schema({
   _id: { type: String, default: () => generateId() },
-  drinkId: { type: String, required: true, index: true },
+  drinkId: { type: String, required: true, unique: true, index: true },
   name: { type: String, required: true },
   brand: { type: String, required: true, index: true },
   abv: { type: Number, required: true, min: 0, max: 100, index: true },
