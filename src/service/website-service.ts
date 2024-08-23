@@ -2,9 +2,9 @@ import type { Scraper, Updater } from '../classes'
 import WebsiteModel from '../db/website-model'
 import { priceLogService } from './price-log-service'
 
-const getPaths = async (infoId: string): Promise<String[]> => {
+const getAllPaths = async (): Promise<String[]> => {
   try {
-    const websites = await WebsiteModel.find({ info: infoId }).lean().exec()
+    const websites = await WebsiteModel.find().lean().exec()
     return websites.map(website => website.path)
   } catch (error) {
     console.log('Error getting paths:', error)
@@ -71,7 +71,7 @@ const updateWebsitesWithoutStock = async (watcher: string): Promise<void> => {
 }
 
 export const websiteService = {
-  getPaths,
+  getAllPaths,
   saveWebsite,
   updateManyWebsites,
   updateWebsitesWithoutStock
