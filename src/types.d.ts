@@ -18,6 +18,12 @@ export interface ImageDB extends Image {
   updatedAt?: Date
 }
 
+export interface PriceLogDB extends PriceLog {
+  _id: string
+  createdAt?: Date
+  updatedAt?: Date
+}
+
 // INTERFACE
 export interface Drink {
   drinkId: string
@@ -44,6 +50,11 @@ export interface Info {
 export interface Image {
   small: string
   large: string
+}
+
+export interface PriceLog {
+  price: number
+  date: Date
 }
 
 // API
