@@ -12,7 +12,7 @@ const uploadImage = async (image: Buffer, folder: string, name: string, size: st
           folder,
           overwrite: true,
           transformation: [
-            { aspect_ratio: '1.0', width: size, height: size, crop: 'scale' },
+            { aspect_ratio: '1.0', width: size, height: size, crop: 'pad' },
             { quality: 'auto:best', fetch_format: 'webp' }
           ]
         }, (_, result) => {
