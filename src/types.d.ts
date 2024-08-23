@@ -30,6 +30,12 @@ export interface WebsiteDB extends Website {
   updatedAt?: Date
 }
 
+export interface ProductDB extends Product {
+  _id: string
+  createdAt?: Date
+  updatedAt?: Date
+}
+
 // INTERFACE
 export interface Drink {
   drinkId: string
@@ -72,6 +78,14 @@ export interface Website {
   lastUpdate: string
   inStock: boolean
   priceLogs: string[]
+}
+
+export interface Product {
+  sku: string
+  quantity: number
+  images: string
+  drink: string
+  websites: string[]
 }
 
 // API
