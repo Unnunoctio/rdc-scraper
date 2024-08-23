@@ -12,7 +12,13 @@ export class Jumbo implements Spider {
   }
 
   headers = {
-    apiKey: 'WlVnnB7c1BblmgUPOfg'
+    apiKey: 'WlVnnB7c1BblmgUPOfg',
+    Host: 'sm-web-api.ecomm.cencosud.com',
+    Origin: 'https://www.jumbo.cl',
+    Referer: 'https://www.jumbo.cl/',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:129.0) Gecko/20100101 Firefox/129.0',
+    'x-consumer': 'jumbo',
+    'x-e-commerce': 'jumbo'
   }
 
   startUrls = [
