@@ -24,6 +24,12 @@ export interface PriceLogDB extends PriceLog {
   updatedAt?: Date
 }
 
+export interface WebsiteDB extends Website {
+  _id: string
+  createdAt?: Date
+  updatedAt?: Date
+}
+
 // INTERFACE
 export interface Drink {
   drinkId: string
@@ -55,6 +61,17 @@ export interface Image {
 export interface PriceLog {
   price: number
   date: Date
+}
+
+export interface Website {
+  info: string
+  path: string
+  price: number
+  bestPrice: number
+  average: number | null
+  lastUpdate: string
+  inStock: boolean
+  priceLogs: string[]
 }
 
 // API
