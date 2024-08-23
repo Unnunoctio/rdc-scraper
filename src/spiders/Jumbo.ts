@@ -15,9 +15,9 @@ export class Jumbo implements Spider {
   }
 
   startUrls = [
-    'https://sm-web-api.ecomm.cencosud.com/catalog/api/v4/products/vinos-cervezas-y-licores/cervezas',
-    'https://sm-web-api.ecomm.cencosud.com/catalog/api/v4/products/vinos-cervezas-y-licores/destilados',
-    'https://sm-web-api.ecomm.cencosud.com/catalog/api/v4/products/vinos-cervezas-y-licores/vinos'
+    'https://sm-web-api.ecomm.cencosud.com/catalog/api/v4/products/vinos-cervezas-y-licores/cervezas'
+    // 'https://sm-web-api.ecomm.cencosud.com/catalog/api/v4/products/vinos-cervezas-y-licores/destilados',
+    // 'https://sm-web-api.ecomm.cencosud.com/catalog/api/v4/products/vinos-cervezas-y-licores/vinos'
   ]
 
   blockUrls = [
@@ -74,7 +74,7 @@ export class Jumbo implements Spider {
   // region Functions
   async getPages (url: string): Promise<string[]> {
     try {
-      const res = await fetch(`${url}?sc=11`, { headers: this.headers })
+      const res = await fetch(`${url}?sc=11`, { headers: this.headers, verbose: true })
       console.log(res)
       const data: CencosudResponse = await res.json()
 
