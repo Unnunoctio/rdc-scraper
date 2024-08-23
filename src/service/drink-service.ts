@@ -2,6 +2,7 @@ import DrinkModel from '../db/drink-model'
 import type { DrinkDB } from '../types'
 import type { Scraper } from '../classes'
 import { getDrinksApi } from '../utils/drinks-api'
+import { productService } from './product-service'
 
 const saveManyDrinksByApi = async (): Promise<void> => {
   const drinksApi = await getDrinksApi()
@@ -11,7 +12,6 @@ const saveManyDrinksByApi = async (): Promise<void> => {
       filter: { drinkId: drink._id },
       update: {
         $set: {
-          drinkId: drink._id,
           name: drink.name,
           brand: drink.brand,
           abv: drink.abv,
@@ -57,9 +57,17 @@ const findDrink = async (product: Scraper): Promise<DrinkDB | undefined> => {
   return selected
 }
 
-// TODO: DELETE MANY DRINKS
+const deleteManyDrinks = async (): Promise<void> => {
+  try {
+    const drinksId = await productService.getDrinkInProducts()
+    await DrinkModel.deleteMany({ _id: { $nin: drinksId } })
+  } catch (error) {
+    console.error('Error deleting drinks')
+  }
+}
 
 export const drinkService = {
   saveManyDrinksByApi,
-  findDrink
+  findDrink,
+  deleteManyDrinks
 }
