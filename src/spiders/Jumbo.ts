@@ -33,10 +33,10 @@ export class Jumbo implements Spider {
   async run (paths: string[]): Promise<[Updater[], Scraper[], Scraper[]]> {
     console.log(`Running ${SpiderName.JUMBO} Spider`)
 
-    const pages = (await Promise.all(this.startUrls.map(async (url) => {
-      return await this.getPages(url)
-    }))).flat()
-    console.log(pages)
+    // const pages = (await Promise.all(this.startUrls.map(async (url) => {
+    //   return await this.getPages(url)
+    // }))).flat()
+    // console.log(pages)
 
     // const products = (await Promise.all(pages.map(async (page) => {
     //   return await this.getProducts(page)

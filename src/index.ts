@@ -7,6 +7,7 @@ import { isSaturday, sleepAndGC } from './utils/time'
 import { Scraper } from './classes'
 import { runSpiders } from './run-spiders'
 import { sendEmail } from './utils/resend'
+import { curlFetch } from './helper/fetch'
 
 console.log('Starting App')
 console.log('Environment:', ENVIRONMENT)
@@ -30,16 +31,21 @@ console.log('Connected to cloudinary')
 
 // TODO: Scraping Function
 const scraping = async (hour: TimeHour): Promise<void> => {
-  console.log(`------------------------------------- Scraping  ${hour} ---------------------------------------`)
+  const url = 'https://sm-web-api.ecomm.cencosud.com/catalog/api/v4/products/vinos-cervezas-y-licores/cervezas?sc=11'
+  const headers = 'apiKey: WlVnnB7c1BblmgUPOfg'
 
-  let notFound: Scraper[] | undefined = await runSpiders()
-  if (isSaturday() && hour === TimeHour.PM_2) {
-    await sendEmail(notFound)
-  }
-  console.log('------------------------------------ Scraping Finished --------------------------------------')
+  const data = await curlFetch(url, [headers])
+  console.log(data)
+  // console.log(`------------------------------------- Scraping  ${hour} ---------------------------------------`)
 
-  notFound = undefined
-  await sleepAndGC()
+  // let notFound: Scraper[] | undefined = await runSpiders()
+  // if (isSaturday() && hour === TimeHour.PM_2) {
+  //   await sendEmail(notFound)
+  // }
+  // console.log('------------------------------------ Scraping Finished --------------------------------------')
+
+  // notFound = undefined
+  // await sleepAndGC()
 }
 
 // ? TESTING
