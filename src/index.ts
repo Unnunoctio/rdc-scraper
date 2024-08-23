@@ -3,8 +3,10 @@ import { v2 as cloudinary } from 'cloudinary'
 import { scheduleJob } from 'node-schedule'
 import { ScheduleHour, TimeHour } from './enums'
 import { CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET, CLOUDINARY_NAME, DB_URI, ENVIRONMENT } from './config'
-import { drinkService } from './service/drink-service'
-import { sleepAndGC } from './utils/time'
+import { isSaturday, sleepAndGC } from './utils/time'
+import { Scraper } from './classes'
+import { runSpiders } from './run-spiders'
+import { sendEmail } from './utils/resend'
 
 console.log('Starting App')
 console.log('Environment:', ENVIRONMENT)
@@ -29,14 +31,14 @@ console.log('Connected to cloudinary')
 // TODO: Scraping Function
 const scraping = async (hour: TimeHour): Promise<void> => {
   console.log(`------------------------------------- Scraping  ${hour} ---------------------------------------`)
-  await drinkService.saveManyDrinksByApi()
-  // let notFound: Scraper[] | undefined = await runSpiders()
-  // if (isSaturday() && hour === TimeHour.PM_2) {
-  //   await sendEmail(notFound)
-  // }
+
+  let notFound: Scraper[] | undefined = await runSpiders()
+  if (isSaturday() && hour === TimeHour.PM_2) {
+    await sendEmail(notFound)
+  }
   console.log('------------------------------------ Scraping Finished --------------------------------------')
 
-  // notFound = undefined
+  notFound = undefined
   await sleepAndGC()
 }
 
