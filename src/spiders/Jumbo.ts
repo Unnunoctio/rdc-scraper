@@ -2,7 +2,6 @@ import type { Info } from '../types'
 import type { CencosudAverage, CencosudProduct, CencosudResponse, Spider } from './types'
 import { SpiderName } from '../enums'
 import { Scraper, Updater } from '../classes'
-import axios from 'axios'
 
 export class Jumbo implements Spider {
   // region Metadata
@@ -12,14 +11,7 @@ export class Jumbo implements Spider {
   }
 
   headers = {
-    'Content-Type': 'application/json',
-    apiKey: 'WlVnnB7c1BblmgUPOfg',
-    Host: 'sm-web-api.ecomm.cencosud.com',
-    Origin: 'https://www.jumbo.cl',
-    Referer: 'https://www.jumbo.cl/',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:129.0) Gecko/20100101 Firefox/129.0',
-    'x-consumer': 'jumbo',
-    'x-e-commerce': 'jumbo'
+    apiKey: 'WlVnnB7c1BblmgUPOfg'
   }
 
   startUrls = [
@@ -82,10 +74,9 @@ export class Jumbo implements Spider {
   // region Functions
   async getPages (url: string): Promise<string[]> {
     try {
-      const { data } = await axios.get<CencosudResponse>(`${url}?sc=11`, { headers: this.headers })
-      console.log(data)
-      // const res = await fetch(`${url}?sc=11`, { headers: this.headers })
-      // const data: CencosudResponse = await res.json()
+      const res = await fetch(`${url}?sc=11`, { headers: this.headers })
+      console.log(res)
+      const data: CencosudResponse = await res.json()
 
       const total = Math.ceil(data.recordsFiltered / 40)
       const pages = Array.from({ length: total }, (_, i) => `${url}?sc=11&page=${i + 1}`)
