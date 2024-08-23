@@ -2,7 +2,7 @@ import type { Scraper, Updater } from '../classes'
 import WebsiteModel from '../db/website-model'
 import { priceLogService } from './price-log-service'
 
-const getAllPaths = async (): Promise<String[]> => {
+const getAllPaths = async (): Promise<string[]> => {
   try {
     const websites = await WebsiteModel.find().lean().exec()
     return websites.map(website => website.path)
