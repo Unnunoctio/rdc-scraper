@@ -1,7 +1,7 @@
 import InfoModel from '../db/info-model'
 import type { Info } from '../types'
 
-const findInfo = async (info: Info): Promise<String | undefined> => {
+const findInfo = async (info: Info): Promise<string | undefined> => {
   try {
     const infoDB = await InfoModel.findOne({ name: info.name }).lean().exec()
     if (infoDB !== null) return infoDB._id
