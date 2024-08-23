@@ -36,47 +36,54 @@ export class Jumbo implements Spider {
     const pages = (await Promise.all(this.startUrls.map(async (url) => {
       return await this.getPages(url)
     }))).flat()
+    console.log(pages)
 
-    const products = (await Promise.all(pages.map(async (page) => {
-      return await this.getProducts(page)
-    }))).flat()
+    // const products = (await Promise.all(pages.map(async (page) => {
+    //   return await this.getProducts(page)
+    // }))).flat()
 
-    const updatedProducts: Updater[] = []
-    const urlProducts: string[] = []
+    // const updatedProducts: Updater[] = []
+    // const urlProducts: string[] = []
 
-    for (const product of products) {
-      if (product === undefined || product.linkText === undefined) continue
+    // for (const product of products) {
+    //   if (product === undefined || product.linkText === undefined) continue
 
-      const path = `${this.pageUrl}/${product.linkText}/p`
-      if (this.blockUrls.includes(path)) continue
+    //   const path = `${this.pageUrl}/${product.linkText}/p`
+    //   if (this.blockUrls.includes(path)) continue
 
-      if (paths.includes(path)) {
-        const updated = new Updater()
-        updated.setCencosudData(product, this.pageUrl)
-        if (updated.isComplete()) updatedProducts.push(updated)
-        continue
-      }
+    //   if (paths.includes(path)) {
+    //     const updated = new Updater()
+    //     updated.setCencosudData(product, this.pageUrl)
+    //     if (updated.isComplete()) updatedProducts.push(updated)
+    //     continue
+    //   }
 
-      urlProducts.push(`${this.productUrl}/${product.linkText}`)
-    }
+    //   urlProducts.push(`${this.productUrl}/${product.linkText}`)
+    // }
 
-    const [completeProducts, incompleteProducts] = await this.getUnitaryProducts(urlProducts)
+    // const [completeProducts, incompleteProducts] = await this.getUnitaryProducts(urlProducts)
 
-    await this.getAverages(updatedProducts)
-    await this.getAverages(completeProducts)
+    // await this.getAverages(updatedProducts)
+    // await this.getAverages(completeProducts)
 
-    return [updatedProducts, completeProducts, incompleteProducts]
+    // return [updatedProducts, completeProducts, incompleteProducts]
+    return [[], [], []]
   }
   // endregion
 
   // region Functions
   async getPages (url: string): Promise<string[]> {
-    const res = await fetch(`${url}?sc=11`, { headers: this.headers })
-    const data: CencosudResponse = await res.json()
+    try {
+      const res = await fetch(`${url}?sc=11`, { headers: this.headers })
+      const data: CencosudResponse = await res.json()
 
-    const total = Math.ceil(data.recordsFiltered / 40)
-    const pages = Array.from({ length: total }, (_, i) => `${url}?sc=11&page=${i + 1}`)
-    return pages
+      const total = Math.ceil(data.recordsFiltered / 40)
+      const pages = Array.from({ length: total }, (_, i) => `${url}?sc=11&page=${i + 1}`)
+      return pages
+    } catch (error) {
+      console.error(`Error in fetch pages: ${url}`, error)
+      return []
+    }
   }
 
   async getProducts (page: string): Promise<CencosudProduct[]> {
