@@ -40,7 +40,11 @@ const saveWebsite = async (product: Scraper, infoId: string, watcher: string): P
 const updateManyWebsites = async (updates: Updater[], watcher: string): Promise<void> => {
   await Promise.all(updates.map(async (update) => {
     try {
-      const website = await WebsiteModel.findOneAndUpdate({ path: update.url }, { $set: { price: update.price, bestPrice: update.bestPrice, average: update.average, lastUpdate: watcher, inStock: true } }, { upsert: false })
+      const website = await WebsiteModel.findOneAndUpdate(
+        { path: update.url },
+        { $set: { price: update.price, bestPrice: update.bestPrice, average: update.average, lastUpdate: watcher, inStock: true } },
+        { upsert: false }
+      )
       if (website === null) return
 
       let logId: string | undefined
