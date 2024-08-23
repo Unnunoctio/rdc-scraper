@@ -2,6 +2,7 @@ import type { Info } from '../types'
 import type { CencosudAverage, CencosudProduct, CencosudResponse, Spider } from './types'
 import { SpiderName } from '../enums'
 import { Scraper, Updater } from '../classes'
+import axios from 'axios'
 
 export class Jumbo implements Spider {
   // region Metadata
@@ -74,8 +75,10 @@ export class Jumbo implements Spider {
   // region Functions
   async getPages (url: string): Promise<string[]> {
     try {
-      const res = await fetch(`${url}?sc=11`, { headers: this.headers })
-      const data: CencosudResponse = await res.json()
+      const { data } = await axios.get<CencosudResponse>(`${url}?sc=11`, { headers: this.headers })
+      console.log(data)
+      // const res = await fetch(`${url}?sc=11`, { headers: this.headers })
+      // const data: CencosudResponse = await res.json()
 
       const total = Math.ceil(data.recordsFiltered / 40)
       const pages = Array.from({ length: total }, (_, i) => `${url}?sc=11&page=${i + 1}`)
