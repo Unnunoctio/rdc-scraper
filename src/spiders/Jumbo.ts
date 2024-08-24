@@ -37,39 +37,37 @@ export class Jumbo implements Spider {
     const pages = (await Promise.all(this.START_URLS.map(async (url) => {
       return await this.getPages(url)
     }))).flat()
-    console.log('pages:', pages.length)
 
     const products = (await Promise.all(pages.map(async (page) => {
       return await this.getProducts(page)
     }))).flat()
-    console.log('products:', products.length)
 
-    // const updatedProducts: Updater[] = []
-    // const urlProducts: string[] = []
+    const updatedProducts: Updater[] = []
+    const urlProducts: string[] = []
 
-    // for (const product of products) {
-    //   if (product === undefined || product.linkText === undefined) continue
+    for (const product of products) {
+      if (product === undefined || product.linkText === undefined) continue
 
-    //   const path = `${this.pageUrl}/${product.linkText}/p`
-    //   if (this.blockUrls.includes(path)) continue
+      const path = `${this.PAGE_URL}/${product.linkText}/p`
+      if (this.BLOCK_URLS.includes(path)) continue
+      if (product.items[0].sellers[0].commertialOffer.AvailableQuantity === 0) continue
 
-    //   if (paths.includes(path)) {
-    //     const updated = new Updater()
-    //     updated.setCencosudData(product, this.pageUrl)
-    //     if (updated.isComplete()) updatedProducts.push(updated)
-    //     continue
-    //   }
+      if (paths.includes(path)) {
+        const updated = new Updater()
+        updated.setCencosudData(product, this.PAGE_URL)
+        if (updated.isComplete()) updatedProducts.push(updated)
+        continue
+      }
 
-    //   urlProducts.push(`${this.productUrl}/${product.linkText}`)
-    // }
+      urlProducts.push(`${this.PRODUCT_URL}/${product.linkText}`)
+    }
 
-    // const [completeProducts, incompleteProducts] = await this.getUnitaryProducts(urlProducts)
+    const [completeProducts, incompleteProducts] = await this.getUnitaryProducts(urlProducts)
 
     // await this.getAverages(updatedProducts)
     // await this.getAverages(completeProducts)
 
-    // return [updatedProducts, completeProducts, incompleteProducts]
-    return [[], [], []]
+    return [updatedProducts, completeProducts, incompleteProducts]
   }
   // endregion
 
@@ -97,30 +95,29 @@ export class Jumbo implements Spider {
     }
   }
 
-  // async getUnitaryProducts (urls: string[]): Promise<[Scraper[], Scraper[]]> {
-  //   const products = await Promise.all(urls.map(async (url) => {
-  //     const product = await this.getProduct(url)
-  //     if (product === undefined) return undefined
+  async getUnitaryProducts (urls: string[]): Promise<[Scraper[], Scraper[]]> {
+    const products = await Promise.all(urls.map(async (url) => {
+      const product = await this.getProduct(url)
+      if (product === undefined) return undefined
 
-  //     const scraped = new Scraper(this.info.name)
-  //     scraped.setCencosudData(product, this.pageUrl)
-  //     return scraped
-  //   }))
+      const scraped = new Scraper(this.INFO.name)
+      scraped.setCencosudData(product, this.PAGE_URL)
+      return scraped
+    }))
 
-  //   const productsFiltered = products.filter(product => product !== undefined) as Scraper[]
-  //   return [productsFiltered.filter(p => !p.isIncomplete()), productsFiltered.filter(p => p.isIncomplete())]
-  // }
+    const productsFiltered = products.filter(product => product !== undefined) as Scraper[]
+    return [productsFiltered.filter(p => !p.isIncomplete()), productsFiltered.filter(p => p.isIncomplete())]
+  }
 
-  // async getProduct (url: string): Promise<CencosudProduct | undefined> {
-  //   try {
-  //     const res = await fetch(url, { headers: this.headers })
-  //     const data: CencosudProduct[] = await res.json()
-  //     return data[0]
-  //   } catch (error) {
-  //     console.error(`Error in fetch: ${url}`)
-  //     return undefined
-  //   }
-  // }
+  async getProduct (url: string): Promise<CencosudProduct | undefined> {
+    try {
+      const data: CencosudProduct[] = await curlFetch(url, this.HEADERS)
+      return data[0]
+    } catch (error) {
+      console.error(`Error in fetch: ${url}`)
+      return undefined
+    }
+  }
 
   // async getAverages (items: Updater[] | Scraper[]): Promise<void> {
   //   const skus = items.map((i: any) => i.productSku).join(',')

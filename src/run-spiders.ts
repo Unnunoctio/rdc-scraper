@@ -5,19 +5,20 @@ import { drinkService } from './service/drink-service'
 import { generateWatcher } from './utils/generation'
 import { sleepBetweenSpiders, sleepStartEndSpiders } from './utils/time'
 import { websiteService } from './service/website-service'
-import { productService } from './service/product-service'
+// import { productService } from './service/product-service'
 import { Jumbo } from './spiders'
 
 const runSpider = async (spider: Spider, name: SpiderName, watcher: string): Promise<Scraper[]> => {
   console.time(`${name} Scraping`)
   const paths = await websiteService.getAllPaths()
   const [updated, completed, incompleted] = await spider.run(paths)
-  await websiteService.updateManyWebsites(updated, watcher)
-  const notFound = await productService.saveManyProducts(completed, spider.INFO, watcher)
+  // await websiteService.updateManyWebsites(updated, watcher)
+  // const notFound = await productService.saveManyProducts(completed, spider.INFO, watcher)
   console.timeEnd(`${name} Scraping`)
 
   console.log(`Updated: ${updated.length}  -  Completed: ${completed.length}  -  Incompleted: ${incompleted.length}`)
-  return [...notFound, ...incompleted]
+  // return [...notFound, ...incompleted]
+  return []
 }
 
 export const runSpiders = async (): Promise<Scraper[]> => {
