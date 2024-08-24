@@ -1,5 +1,5 @@
 import type { Info } from '../types'
-import type { CencosudProduct, CencosudResponse, Spider } from './types'
+import type { CencosudAverage, CencosudProduct, CencosudResponse, Spider } from './types'
 import { SpiderName } from '../enums'
 import { Scraper, Updater } from '../classes'
 import { curlFetch } from '../helper/fetch'
@@ -19,10 +19,6 @@ export class Jumbo implements Spider {
     'https://sm-web-api.ecomm.cencosud.com/catalog/api/v4/products/vinos-cervezas-y-licores/cervezas',
     'https://sm-web-api.ecomm.cencosud.com/catalog/api/v4/products/vinos-cervezas-y-licores/destilados',
     'https://sm-web-api.ecomm.cencosud.com/catalog/api/v4/products/vinos-cervezas-y-licores/vinos'
-  ]
-
-  private readonly BLOCK_URLS = [
-    'https://www.jumbo.cl/cerveza-kunstmann-botella-330-cc-torobayo-nacional/p'
   ]
 
   private readonly PAGE_URL = 'https://www.jumbo.cl'
@@ -47,11 +43,9 @@ export class Jumbo implements Spider {
 
     for (const product of products) {
       if (product === undefined || product.linkText === undefined) continue
-
-      const path = `${this.PAGE_URL}/${product.linkText}/p`
-      if (this.BLOCK_URLS.includes(path)) continue
       if (product.items[0].sellers[0].commertialOffer.AvailableQuantity === 0) continue
 
+      const path = `${this.PAGE_URL}/${product.linkText}/p`
       if (paths.includes(path)) {
         const updated = new Updater()
         updated.setCencosudData(product, this.PAGE_URL)
@@ -64,8 +58,8 @@ export class Jumbo implements Spider {
 
     const [completeProducts, incompleteProducts] = await this.getUnitaryProducts(urlProducts)
 
-    // await this.getAverages(updatedProducts)
-    // await this.getAverages(completeProducts)
+    await this.getAverages(updatedProducts)
+    await this.getAverages(completeProducts)
 
     return [updatedProducts, completeProducts, incompleteProducts]
   }
@@ -119,18 +113,17 @@ export class Jumbo implements Spider {
     }
   }
 
-  // async getAverages (items: Updater[] | Scraper[]): Promise<void> {
-  //   const skus = items.map((i: any) => i.productSku).join(',')
-  //   try {
-  //     const res = await fetch(`${this.averageUrl}?ids=${skus}`, { headers: this.headers })
-  //     const data: CencosudAverage[] = await res.json()
-  //     for (const item of items) {
-  //       const average = data.find(a => a.id === item.productSku)
-  //       if (average !== undefined && average.totalCount !== 0) item.average = average.average
-  //     }
-  //   } catch (error) {
-  //     console.error('Error when obtaining averages')
-  //   }
-  // }
+  async getAverages (items: Updater[] | Scraper[]): Promise<void> {
+    const skus = items.map((i: any) => i.productSku).join(',')
+    try {
+      const data: CencosudAverage[] = await curlFetch(`${this.AVERAGE_URL}?ids=${skus}`, this.HEADERS)
+      for (const item of items) {
+        const average = data.find(a => a.id === item.productSku)
+        if (average !== undefined && average.totalCount !== 0) item.average = average.average
+      }
+    } catch (error) {
+      console.error('Error when obtaining averages')
+    }
+  }
   // endregion
 }
