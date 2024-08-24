@@ -122,7 +122,7 @@ export class Jumbo implements Spider {
         if (average !== undefined && average.totalCount !== 0) item.average = average.average
       }
     } catch (error) {
-      console.error('Error when obtaining averages')
+      console.error('Error when obtaining averages', error)
     }
   }
   // endregion
