@@ -13,7 +13,7 @@ const runSpider = async (spider: Spider, name: SpiderName, watcher: string): Pro
   const paths = await websiteService.getAllPaths()
   const [updated, completed, incompleted] = await spider.run(paths)
   await websiteService.updateManyWebsites(updated, watcher)
-  const notFound = await productService.saveManyProducts(completed, spider.info, watcher)
+  const notFound = await productService.saveManyProducts(completed, spider.INFO, watcher)
   console.timeEnd(`${name} Scraping`)
 
   console.log(`Updated: ${updated.length}  -  Completed: ${completed.length}  -  Incompleted: ${incompleted.length}`)
