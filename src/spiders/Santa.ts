@@ -2,40 +2,37 @@ import type { Info } from '../types'
 import type { CencosudAverage, CencosudProduct, CencosudResponse, Spider } from './types'
 import { SpiderName } from '../enums'
 import { Scraper, Updater } from '../classes'
+import { curlFetch } from '../helper/fetch'
 
 export class Santa implements Spider {
   // region Metadata
-  info: Info = {
+  public readonly INFO: Info = {
     name: SpiderName.SANTA,
     logo: 'https://assets.santaisabel.cl/favicon/favicon-196x196.png'
   }
 
-  headers = {
-    apiKey: 'WlVnnB7c1BblmgUPOfg',
-    'x-account': 'pedrofontova',
-    'x-consumer': 'santaisabel'
-  }
+  private readonly HEADERS = [
+    'apiKey: WlVnnB7c1BblmgUPOfg',
+    'x-account: pedrofontova',
+    'x-consumer: santaisabel'
+  ]
 
-  startUrls = [
+  private readonly START_URLS = [
     'https://sm-web-api.ecomm.cencosud.com/catalog/api/v4/pedrofontova/products/vinos-cervezas-y-licores/cervezas',
     'https://sm-web-api.ecomm.cencosud.com/catalog/api/v4/pedrofontova/products/vinos-cervezas-y-licores/destilados',
     'https://sm-web-api.ecomm.cencosud.com/catalog/api/v4/pedrofontova/products/vinos-cervezas-y-licores/vinos'
   ]
 
-  blockUrls = [
-    'https://www.santaisabel.cl/cerveza-torobayo-botella-330-cc-263611/p'
-  ]
-
-  pageUrl = 'https://www.santaisabel.cl'
-  averageUrl = 'https://sm-web-api.ecomm.cencosud.com/catalog/api/v1/reviews/ratings'
-  productUrl = 'https://sm-web-api.ecomm.cencosud.com/catalog/api/v1/pedrofontova/product'
+  private readonly PAGE_URL = 'https://www.santaisabel.cl'
+  private readonly AVERAGE_URL = 'https://sm-web-api.ecomm.cencosud.com/catalog/api/v1/reviews/ratings'
+  private readonly PRODUCT_URL = 'https://sm-web-api.ecomm.cencosud.com/catalog/api/v1/pedrofontova/product'
   // endregion
 
   // region RUN
   async run (paths: string[]): Promise<[Updater[], Scraper[], Scraper[]]> {
     console.log(`Running ${SpiderName.SANTA} Spider`)
 
-    const pages = (await Promise.all(this.startUrls.map(async (url) => {
+    const pages = (await Promise.all(this.START_URLS.map(async (url) => {
       return await this.getPages(url)
     }))).flat()
 
@@ -48,18 +45,17 @@ export class Santa implements Spider {
 
     for (const product of products) {
       if (product === undefined || product.linkText === undefined) continue
+      if (product.items[0].sellers[0].commertialOffer.AvailableQuantity === 0) continue
 
-      const path = `${this.pageUrl}/${product.linkText}/p`
-      if (this.blockUrls.includes(path)) continue
-
+      const path = `${this.PAGE_URL}/${product.linkText}/p`
       if (paths.includes(path)) {
         const updated = new Updater()
-        updated.setCencosudData(product, this.pageUrl)
+        updated.setCencosudData(product, this.PAGE_URL)
         if (updated.isComplete()) updatedProducts.push(updated)
         continue
       }
 
-      urlProducts.push(`${this.productUrl}/${product.linkText}`)
+      urlProducts.push(`${this.PRODUCT_URL}/${product.linkText}`)
     }
 
     const [completeProducts, incompleteProducts] = await this.getUnitaryProducts(urlProducts)
@@ -73,19 +69,26 @@ export class Santa implements Spider {
 
   // region Functions
   async getPages (url: string): Promise<string[]> {
-    const res = await fetch(`${url}?sc=11`, { headers: this.headers })
-    const data: CencosudResponse = await res.json()
+    try {
+      const data: CencosudResponse = await curlFetch(`${url}?sc=11`, this.HEADERS)
 
-    const total = Math.ceil(data.recordsFiltered / 40)
-    const pages = Array.from({ length: total }, (_, i) => `${url}?sc=11&page=${i + 1}`)
-    return pages
+      const total = Math.ceil(data.recordsFiltered / 40)
+      const pages = Array.from({ length: total }, (_, i) => `${url}?sc=11&page=${i + 1}`)
+      return pages
+    } catch (error) {
+      console.error(`Error in fetch pages: ${url}`, error)
+      return []
+    }
   }
 
   async getProducts (page: string): Promise<CencosudProduct[]> {
-    const res = await fetch(page, { headers: this.headers })
-    const data: CencosudResponse = await res.json()
-
-    return data.products
+    try {
+      const data: CencosudResponse = await curlFetch(page, this.HEADERS)
+      return data.products
+    } catch (error) {
+      console.error(`Error in fetch products: ${page}`, error)
+      return []
+    }
   }
 
   async getUnitaryProducts (urls: string[]): Promise<[Scraper[], Scraper[]]> {
@@ -93,8 +96,8 @@ export class Santa implements Spider {
       const product = await this.getProduct(url)
       if (product === undefined) return undefined
 
-      const scraped = new Scraper(this.info.name)
-      scraped.setCencosudData(product, this.pageUrl)
+      const scraped = new Scraper(this.INFO.name)
+      scraped.setCencosudData(product, this.PAGE_URL)
       return scraped
     }))
 
@@ -104,8 +107,7 @@ export class Santa implements Spider {
 
   async getProduct (url: string): Promise<CencosudProduct | undefined> {
     try {
-      const res = await fetch(url, { headers: this.headers })
-      const data: CencosudProduct[] = await res.json()
+      const data: CencosudProduct[] = await curlFetch(url, this.HEADERS)
       return data[0]
     } catch (error) {
       console.error(`Error in fetch: ${url}`)
@@ -116,14 +118,13 @@ export class Santa implements Spider {
   async getAverages (items: Updater[] | Scraper[]): Promise<void> {
     const skus = items.map((i: any) => i.productSku).join(',')
     try {
-      const res = await fetch(`${this.averageUrl}?ids=${skus}`, { headers: this.headers })
-      const data: CencosudAverage[] = await res.json()
+      const data: CencosudAverage[] = await curlFetch(`${this.AVERAGE_URL}?ids=${skus}`, this.HEADERS)
       for (const item of items) {
         const average = data.find(a => a.id === item.productSku)
         if (average !== undefined && average.totalCount !== 0) item.average = average.average
       }
     } catch (error) {
-      console.error('Error when obtaining averages')
+      console.error('Error when obtaining averages', error)
     }
   }
   // endregion
