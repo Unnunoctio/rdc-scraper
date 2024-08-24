@@ -22,8 +22,9 @@ export class Jumbo implements Spider {
   ]
 
   private readonly PAGE_URL = 'https://www.jumbo.cl'
-  private readonly AVERAGE_URL = 'https://sm-web-api.ecomm.cencosud.com/catalog/api/v1/reviews/ratings'
   private readonly PRODUCT_URL = 'https://sm-web-api.ecomm.cencosud.com/catalog/api/v1/product'
+  private readonly AVERAGE_URL = 'https://sm-web-api.ecomm.cencosud.com/catalog/api/v1/reviews/ratings'
+  private readonly AVERAGE_STEP = 300
   // endregion
 
   // region RUN
@@ -114,15 +115,17 @@ export class Jumbo implements Spider {
   }
 
   async getAverages (items: Updater[] | Scraper[]): Promise<void> {
-    const skus = items.map((i: any) => i.productSku).join(',')
-    try {
-      const data: CencosudAverage[] = await curlFetch(`${this.AVERAGE_URL}?ids=${skus}`, this.HEADERS)
-      for (const item of items) {
-        const average = data.find(a => a.id === item.productSku)
-        if (average !== undefined && average.totalCount !== 0) item.average = average.average
+    for (let i = 0; i < items.length; i += this.AVERAGE_STEP) {
+      const skus = items.slice(i, i + this.AVERAGE_STEP).map((i: any) => i.productSku).join(',')
+      try {
+        const data: CencosudAverage[] = await curlFetch(`${this.AVERAGE_URL}?ids=${skus}`, this.HEADERS)
+        for (const item of items) {
+          const average = data.find(a => a.id === item.productSku)
+          if (average !== undefined && average.totalCount !== 0) item.average = average.average
+        }
+      } catch (error) {
+        console.error('Error when obtaining averages')
       }
-    } catch (error) {
-      console.error('Error when obtaining averages', error)
     }
   }
   // endregion
