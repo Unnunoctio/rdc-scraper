@@ -12,6 +12,9 @@ const WebsiteSchema = new Schema({
   lastUpdate: { type: String, required: true },
   inStock: { type: Boolean, required: true, index: true },
   priceLogs: [{ type: String, ref: 'PriceLog' }]
+}, {
+  timestamps: true,
+  versionKey: false
 })
 
 const WebsiteModel = model<WebsiteDB>('Website', WebsiteSchema, 'websites')
