@@ -1,12 +1,13 @@
 import mongoose from 'mongoose'
 import { v2 as cloudinary } from 'cloudinary'
 import { scheduleJob } from 'node-schedule'
-import { ScheduleHour, TimeHour } from './enums'
+import { ScheduleHour, TimeHour, TimeUnit } from './enums'
 import { CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET, CLOUDINARY_NAME, DB_URI, ENVIRONMENT } from './config'
 import { isSaturday, sleepAndGC } from './utils/time'
 import { Scraper } from './classes'
 import { runSpiders } from './run-spiders'
 import { sendEmail } from './utils/resend'
+import { sleep } from 'bun'
 
 console.log('Starting App')
 console.log('Environment:', ENVIRONMENT)
@@ -43,6 +44,7 @@ const scraping = async (hour: TimeHour): Promise<void> => {
 }
 
 // ? TESTING
+await sleep(15 * TimeUnit.SEC)
 await scraping(TimeHour.AM_8)
 
 // TODO: Schedules every 2 hours between 8 am to 6 pm in Chilean time

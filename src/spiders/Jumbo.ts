@@ -1,5 +1,5 @@
 import type { Info } from '../types'
-import type { CencosudResponse, Spider } from './types'
+import type { CencosudProduct, CencosudResponse, Spider } from './types'
 import { SpiderName } from '../enums'
 import { Scraper, Updater } from '../classes'
 import { curlFetch } from '../helper/fetch'
@@ -37,11 +37,12 @@ export class Jumbo implements Spider {
     const pages = (await Promise.all(this.START_URLS.map(async (url) => {
       return await this.getPages(url)
     }))).flat()
-    console.log(pages)
+    console.log('pages:', pages.length)
 
-    // const products = (await Promise.all(pages.map(async (page) => {
-    //   return await this.getProducts(page)
-    // }))).flat()
+    const products = (await Promise.all(pages.map(async (page) => {
+      return await this.getProducts(page)
+    }))).flat()
+    console.log('products:', products.length)
 
     // const updatedProducts: Updater[] = []
     // const urlProducts: string[] = []
@@ -86,12 +87,15 @@ export class Jumbo implements Spider {
     }
   }
 
-  // async getProducts (page: string): Promise<CencosudProduct[]> {
-  //   const res = await fetch(page, { headers: this.headers })
-  //   const data: CencosudResponse = await res.json()
-
-  //   return data.products
-  // }
+  async getProducts (page: string): Promise<CencosudProduct[]> {
+    try {
+      const data: CencosudResponse = await curlFetch(page, this.HEADERS)
+      return data.products
+    } catch (error) {
+      console.error(`Error in fetch products: ${page}`, error)
+      return []
+    }
+  }
 
   // async getUnitaryProducts (urls: string[]): Promise<[Scraper[], Scraper[]]> {
   //   const products = await Promise.all(urls.map(async (url) => {
