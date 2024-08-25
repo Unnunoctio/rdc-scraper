@@ -14,10 +14,7 @@ RUN bun install --frozen-lockfile --production
 COPY . .
 
 # Configuramos las variables de entorno
-ENV NODE_ENV=production
-
-# Exponemos el puerto (asumiendo que su aplicación usa el puerto 3000)
-EXPOSE 3000
+ENV NODE_ENV=PRODUCTION
 
 # Ejecutamos la aplicación
 CMD ["bun", "src/index.ts"]
