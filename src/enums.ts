@@ -9,3 +9,8 @@ export enum SpiderName {
   LIDER = 'Lider',
   SANTA = 'Santa Isabel',
 }
+
+export enum EmailSend {
+  SEND = 'SEND',
+  SKIP = 'SKIP'
+}

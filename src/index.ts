@@ -1,12 +1,10 @@
 import mongoose from 'mongoose'
 import { v2 as cloudinary } from 'cloudinary'
-import { CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET, CLOUDINARY_NAME, DB_URI, ENVIRONMENT } from './config'
+import { CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET, CLOUDINARY_NAME, DB_URI, ENVIRONMENT, RESEND_SEND } from './config'
 import { isSaturday } from './utils/time'
 import { runSpiders } from './run-spiders'
 import { sendEmail } from './utils/resend'
-
-console.log('Starting App')
-console.log('Environment:', ENVIRONMENT)
+import { EmailSend } from './enums'
 
 console.log('Starting App')
 console.log('Environment:', ENVIRONMENT)
@@ -28,7 +26,7 @@ async function main (): Promise<void> {
     // TODO: Scraping Function
     console.log('------------------------------------ Scraping Started ---------------------------------------')
     const notFound = await runSpiders()
-    if (isSaturday()) {
+    if (isSaturday() && RESEND_SEND === EmailSend.SEND) {
       await sendEmail(notFound)
     }
     console.log('------------------------------------ Scraping Finished --------------------------------------')
