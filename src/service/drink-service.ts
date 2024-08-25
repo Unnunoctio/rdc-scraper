@@ -7,54 +7,62 @@ import { productService } from './product-service'
 const saveManyDrinksByApi = async (): Promise<void> => {
   const drinksApi = await getDrinksApi()
 
-  const updateOperations = drinksApi.map(drink => ({
-    updateOne: {
-      filter: { drinkId: drink._id },
-      update: {
-        $set: {
-          name: drink.name,
-          brand: drink.brand,
-          abv: drink.abv,
-          volume: drink.volume,
-          packaging: drink.packaging,
-          category: drink.category,
-          subCategory: drink.subCategory,
-          origin: drink.origin,
-          variety: drink.variety,
-          ibu: drink.ibu,
-          servingTemp: drink.servingTemp,
-          strain: drink.strain,
-          vineyard: drink.vineyard
-        }
-      },
-      upsert: true
-    }
-  }))
+  try {
+    const updateOperations = drinksApi.map(drink => ({
+      updateOne: {
+        filter: { drinkId: drink._id },
+        update: {
+          $set: {
+            name: drink.name,
+            brand: drink.brand,
+            abv: drink.abv,
+            volume: drink.volume,
+            packaging: drink.packaging,
+            category: drink.category,
+            subCategory: drink.subCategory,
+            origin: drink.origin,
+            variety: drink.variety,
+            ibu: drink.ibu,
+            servingTemp: drink.servingTemp,
+            strain: drink.strain,
+            vineyard: drink.vineyard
+          }
+        },
+        upsert: true
+      }
+    }))
 
-  await DrinkModel.bulkWrite(updateOperations)
+    await DrinkModel.bulkWrite(updateOperations)
+  } catch (error) {
+    console.error('Error saving api drinks', error)
+  }
 }
 
 const findDrink = async (product: Scraper): Promise<DrinkDB | undefined> => {
-  const drinks = await DrinkModel.find({ brand: product.brand, volume: product.content, packaging: product.package, abv: product.alcoholicGrade }, { createdAt: 0, updatedAt: 0 }).lean().exec()
-  if (drinks.length === 0) return undefined
+  try {
+    const drinks = await DrinkModel.find({ brand: product.brand, volume: product.content, packaging: product.package, abv: product.alcoholicGrade }, { createdAt: 0, updatedAt: 0 }).lean().exec()
+    if (drinks.length === 0) return undefined
 
-  let selected: DrinkDB | undefined
-  let matching = -1
+    let selected: DrinkDB | undefined
+    let matching = -1
 
-  const titleSplit = product.title?.toLocaleLowerCase().split(' ').filter(w => w !== '') as string[]
+    const titleSplit = product.title?.toLocaleLowerCase().split(' ').filter(w => w !== '') as string[]
 
-  for (const d of drinks) {
-    const nameSplit = d.name?.toLowerCase().split(' ').filter(w => w !== '')
-    const isMatching = nameSplit.every(w => titleSplit.includes(w))
+    for (const d of drinks) {
+      const nameSplit = d.name?.toLowerCase().split(' ').filter(w => w !== '')
+      const isMatching = nameSplit.every(w => titleSplit.includes(w))
 
-    // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-    if (isMatching && (nameSplit.length > matching)) {
-      matching = nameSplit.length
-      selected = d
+      // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
+      if (isMatching && (nameSplit.length > matching)) {
+        matching = nameSplit.length
+        selected = d
+      }
     }
-  }
 
-  return selected
+    return selected
+  } catch (error) {
+    console.log('Error finding drink', error, '/n product:', product)
+  }
 }
 
 const deleteManyDrinks = async (): Promise<void> => {
