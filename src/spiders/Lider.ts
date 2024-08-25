@@ -13,7 +13,8 @@ export class Lider implements Spider {
   private readonly HEADERS = {
     'X-Channel': 'SOD',
     Tenant: 'supermercado',
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
   }
 
   private readonly START_URL = 'https://apps.lider.cl/supermercado/bff/category'

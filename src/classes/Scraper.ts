@@ -185,6 +185,7 @@ export class Scraper {
         this.content = (unit === 'l' || unit === 'L') ? amount * 1000 : amount
       }
     }
+    if (Number.isNaN(this.content)) this.content = undefined
 
     // Package
     const packaging = getEspecification(data.specifications, 'Presentación')
