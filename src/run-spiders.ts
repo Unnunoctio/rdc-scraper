@@ -6,7 +6,7 @@ import { generateWatcher } from './utils/generation'
 import { sleepBetweenSpiders, sleepStartEndSpiders } from './utils/time'
 import { websiteService } from './service/website-service'
 import { productService } from './service/product-service'
-import { Jumbo, Lider, Santa } from './spiders'
+import { Jumbo, Santa } from './spiders'
 
 const runSpider = async (spider: Spider, name: SpiderName, watcher: string): Promise<Scraper[]> => {
   console.time(`${name} Scraping`)
@@ -40,8 +40,8 @@ export const runSpiders = async (): Promise<Scraper[]> => {
   await sleepBetweenSpiders()
 
   // TODO: LIDER
-  const liderNotFound = await runSpider(new Lider(), SpiderName.LIDER, watcher)
-  notFound.push(...liderNotFound)
+  // const liderNotFound = await runSpider(new Lider(), SpiderName.LIDER, watcher)
+  // notFound.push(...liderNotFound)
 
   await sleepStartEndSpiders()
 
