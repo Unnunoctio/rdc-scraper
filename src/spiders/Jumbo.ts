@@ -2,7 +2,6 @@ import type { Info } from '../types'
 import type { CencosudAverage, CencosudProduct, CencosudResponse, Spider } from './types'
 import { SpiderName } from '../enums'
 import { Scraper, Updater } from '../classes'
-import { curlFetch } from '../helper/fetch'
 
 export class Jumbo implements Spider {
   // region Metadata
@@ -11,9 +10,9 @@ export class Jumbo implements Spider {
     logo: 'https://assets.jumbo.cl/favicon/favicon-192.png'
   }
 
-  private readonly HEADERS = [
-    'apiKey: WlVnnB7c1BblmgUPOfg'
-  ]
+  private readonly HEADERS = {
+    apiKey: 'WlVnnB7c1BblmgUPOfg'
+  }
 
   private readonly START_URLS = [
     'https://sm-web-api.ecomm.cencosud.com/catalog/api/v4/products/vinos-cervezas-y-licores/cervezas',
@@ -69,7 +68,8 @@ export class Jumbo implements Spider {
   // region Functions
   async getPages (url: string): Promise<string[]> {
     try {
-      const data: CencosudResponse = await curlFetch(`${url}?sc=11`, this.HEADERS)
+      const res = await fetch(`${url}?sc=11`, { headers: this.HEADERS })
+      const data: CencosudResponse = await res.json()
 
       const total = Math.ceil(data.recordsFiltered / 40)
       const pages = Array.from({ length: total }, (_, i) => `${url}?sc=11&page=${i + 1}`)
@@ -82,7 +82,8 @@ export class Jumbo implements Spider {
 
   async getProducts (page: string): Promise<CencosudProduct[]> {
     try {
-      const data: CencosudResponse = await curlFetch(page, this.HEADERS)
+      const res = await fetch(page, { headers: this.HEADERS })
+      const data: CencosudResponse = await res.json()
       return data.products
     } catch (error) {
       console.error(`Error in fetch products: ${page}`, error)
@@ -106,7 +107,8 @@ export class Jumbo implements Spider {
 
   async getProduct (url: string): Promise<CencosudProduct | undefined> {
     try {
-      const data: CencosudProduct[] = await curlFetch(url, this.HEADERS)
+      const res = await fetch(url, { headers: this.HEADERS })
+      const data: CencosudProduct[] = await res.json()
       return data[0]
     } catch (error) {
       console.error(`Error in fetch: ${url}`)
@@ -118,7 +120,8 @@ export class Jumbo implements Spider {
     for (let i = 0; i < items.length; i += this.AVERAGE_STEP) {
       const skus = items.slice(i, i + this.AVERAGE_STEP).map((i: any) => i.productSku).join(',')
       try {
-        const data: CencosudAverage[] = await curlFetch(`${this.AVERAGE_URL}?ids=${skus}`, this.HEADERS)
+        const res = await fetch(`${this.AVERAGE_URL}?ids=${skus}`, { headers: this.HEADERS })
+        const data: CencosudAverage[] = await res.json()
         for (const item of items) {
           const average = data.find(a => a.id === item.productSku)
           if (average !== undefined && average.totalCount !== 0) item.average = average.average
