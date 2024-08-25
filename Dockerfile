@@ -1,27 +1,23 @@
-# Use the official Bun image
-FROM oven/bun:1.1.14
+# Usamos la imagen oficial de Bun
+FROM oven/bun:1.1.14-slim
 
-# Install curl and any other necessary dependencies
-# Clean up in the same layer to reduce image size
-RUN apt-get update && \
-    apt-get install -y curl && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-
-# Set the working directory
+# Establecemos el directorio de trabajo
 WORKDIR /app
 
-# Copy package.json and bun.lockb (if you have one)
+# Copiamos package.json y bun.lockb (si existe)
 COPY package.json bun.lockb* ./
 
-# Install dependencies
-RUN bun install --production
+# Instalamos las dependencias
+RUN bun install --frozen-lockfile --production
 
-# Copy the rest of the application code
+# Copiamos el resto del código de la aplicación
 COPY . .
 
-# Set environment variables
-ENV NODE_ENV=PRODUCTION
+# Configuramos las variables de entorno
+ENV NODE_ENV=production
 
-# Run the application
+# Exponemos el puerto (asumiendo que su aplicación usa el puerto 3000)
+EXPOSE 3000
+
+# Ejecutamos la aplicación
 CMD ["bun", "src/index.ts"]
