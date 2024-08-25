@@ -1,56 +1,52 @@
 import mongoose from 'mongoose'
 import { v2 as cloudinary } from 'cloudinary'
-import { scheduleJob } from 'node-schedule'
-import { ScheduleHour, TimeHour, TimeUnit } from './enums'
 import { CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET, CLOUDINARY_NAME, DB_URI, ENVIRONMENT } from './config'
-import { isSaturday, sleepAndGC } from './utils/time'
-import { Scraper } from './classes'
+import { isSaturday } from './utils/time'
 import { runSpiders } from './run-spiders'
 import { sendEmail } from './utils/resend'
-import { sleep } from 'bun'
 
 console.log('Starting App')
 console.log('Environment:', ENVIRONMENT)
 
-// TODO: Connect to Database
-try {
-  await mongoose.connect(DB_URI as string)
-  console.log('Connected to database')
-} catch (error) {
-  console.log('Error connecting to database', error)
-  process.exit(1)
-}
+console.log('Starting App')
+console.log('Environment:', ENVIRONMENT)
 
-// TODO: Connect to Cloudinary
-cloudinary.config({
-  cloud_name: CLOUDINARY_NAME,
-  api_key: CLOUDINARY_API_KEY,
-  api_secret: CLOUDINARY_API_SECRET
-})
-console.log('Connected to cloudinary')
+async function main (): Promise<void> {
+  try {
+    // TODO: Connect to Database
+    await mongoose.connect(DB_URI as string)
+    console.log('Connected to database')
 
-// TODO: Scraping Function
-const scraping = async (hour: TimeHour): Promise<void> => {
-  console.log(`------------------------------------- Scraping  ${hour} ---------------------------------------`)
+    // TODO: Connect to Cloudinary
+    cloudinary.config({
+      cloud_name: CLOUDINARY_NAME,
+      api_key: CLOUDINARY_API_KEY,
+      api_secret: CLOUDINARY_API_SECRET
+    })
+    console.log('Connected to cloudinary')
 
-  let notFound: Scraper[] | undefined = await runSpiders()
-  if (isSaturday() && hour === TimeHour.PM_2) {
-    await sendEmail(notFound)
+    // TODO: Scraping Function
+    console.log('------------------------------------ Scraping Started ---------------------------------------')
+    const notFound = await runSpiders()
+    if (isSaturday()) {
+      await sendEmail(notFound)
+    }
+    console.log('------------------------------------ Scraping Finished --------------------------------------')
+  } catch (error) {
+    console.error('An error occurred:', error)
+    process.exit(1)
+  } finally {
+    // TODO: Ensure database disconnection happens even if there's an error
+    await mongoose.disconnect()
+    console.log('Disconnected from database')
   }
-  console.log('------------------------------------ Scraping Finished --------------------------------------')
-
-  notFound = undefined
-  await sleepAndGC()
 }
 
-// ? TESTING
-await sleep(15 * TimeUnit.SEC)
-await scraping(TimeHour.AM_8)
-
-// TODO: Schedules every 2 hours between 8 am to 6 pm in Chilean time
-scheduleJob(ScheduleHour.AM_8, async () => await scraping(TimeHour.AM_8))
-scheduleJob(ScheduleHour.AM_10, async () => await scraping(TimeHour.AM_10))
-scheduleJob(ScheduleHour.PM_12, async () => await scraping(TimeHour.PM_12))
-scheduleJob(ScheduleHour.PM_2, async () => await scraping(TimeHour.PM_2))
-scheduleJob(ScheduleHour.PM_4, async () => await scraping(TimeHour.PM_4))
-scheduleJob(ScheduleHour.PM_6, async () => await scraping(TimeHour.PM_6))
+// TODO: Run the main function
+main().then(() => {
+  console.log('Process completed successfully')
+  process.exit(0)
+}).catch((error) => {
+  console.error('Process failed:', error)
+  process.exit(1)
+})
