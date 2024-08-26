@@ -1,20 +1,15 @@
 import { DRINKS_API } from '../config'
-import type { Drink, DrinksApi } from '../types'
+import type { DrinkApi, DrinksApiResponse } from '../types'
 
-export const getDrinksApi = async (): Promise<Drink[]> => {
+export const getDrinksApi = async (): Promise<DrinkApi[]> => {
   const drinksUrl = DRINKS_API as string
-  const pages = [`${drinksUrl}/cervezas?limit=0`, `${drinksUrl}/destilados?limit=0`, `${drinksUrl}/vinos?limit=0`]
 
   try {
-    const drinks = await Promise.all(pages.map(async (page) => {
-      const res = await fetch(page)
-      const data: DrinksApi = await res.json()
-      return data.drinks
-    }))
-
-    return drinks.flat()
+    const res = await fetch(drinksUrl)
+    const data: DrinksApiResponse = await res.json()
+    return data.data
   } catch (error) {
-    console.error('Error getting drinks from the api')
+    console.error('Error fetching drinks:', error)
     return []
   }
 }

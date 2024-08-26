@@ -1,24 +1,25 @@
 import type { Info } from '../types'
 import type { LiderBody, LiderProduct, LiderResponse, Spider } from './types'
-import { SpiderName } from '../utils/enums'
 import { Scraper, Updater } from '../classes'
+import { SpiderName } from '../enums'
 
 export class Lider implements Spider {
   // region Metadata
-  info: Info = {
+  public readonly INFO: Info = {
     name: SpiderName.LIDER,
     logo: 'https://www.walmartchile.cl/wp-content/themes/walmartchile/img/favicon-32x32.png'
   }
 
-  headers = {
+  private readonly HEADERS = {
     'X-Channel': 'SOD',
     Tenant: 'supermercado',
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
   }
 
-  startUrl = 'https://apps.lider.cl/supermercado/bff/category'
+  private readonly START_URL = 'https://apps.lider.cl/supermercado/bff/category'
 
-  startBodies: LiderBody[] = [
+  private readonly START_BODIES: LiderBody[] = [
     {
       categories: 'Bebidas y Licores/Cervezas',
       page: 1,
@@ -42,16 +43,14 @@ export class Lider implements Spider {
     }
   ]
 
-  blockUrls: string[] = []
-
-  pageUrl = 'https://www.lider.cl'
+  private readonly PAGE_URL = 'https://www.lider.cl'
   // endregion
 
   // region RUN
   async run (paths: string[]): Promise<[Updater[], Scraper[], Scraper[]]> {
     console.log('Running Lider Spider')
 
-    const bodies = (await Promise.all(this.startBodies.map(async (body) => {
+    const bodies = (await Promise.all(this.START_BODIES.map(async (body) => {
       return await this.getBodies(body)
     }))).flat()
 
@@ -65,19 +64,18 @@ export class Lider implements Spider {
 
     for (const product of products) {
       if (product === undefined || product.sku === undefined) continue
+      if (!product.available) continue
 
-      const path = `${this.pageUrl}/supermercado/product/sku/${product.sku}`
-      if (this.blockUrls.includes(path)) continue
-
+      const path = `${this.PAGE_URL}/supermercado/product/sku/${product.sku}`
       if (paths.includes(path)) {
         const updated = new Updater()
-        updated.setLiderData(product, this.pageUrl)
+        updated.setLiderData(product, this.PAGE_URL)
         if (updated.isComplete()) updatedProducts.push(updated)
         continue
       }
 
-      const scraped = new Scraper(this.info.name)
-      scraped.setLiderData(product, this.pageUrl)
+      const scraped = new Scraper(this.INFO.name)
+      scraped.setLiderData(product, this.PAGE_URL)
 
       if (scraped.isIncomplete()) {
         incompleteProducts.push(scraped)
@@ -93,9 +91,9 @@ export class Lider implements Spider {
 
   // region Functions
   async getBodies (body: LiderBody): Promise<LiderBody[]> {
-    const res = await fetch(this.startUrl, {
+    const res = await fetch(this.START_URL, {
       method: 'POST',
-      headers: this.headers,
+      headers: this.HEADERS,
       body: JSON.stringify(body)
     })
     const data: LiderResponse = await res.json()
@@ -108,9 +106,9 @@ export class Lider implements Spider {
   }
 
   async getProducts (body: LiderBody): Promise<LiderProduct[]> {
-    const res = await fetch(this.startUrl, {
+    const res = await fetch(this.START_URL, {
       method: 'POST',
-      headers: this.headers,
+      headers: this.HEADERS,
       body: JSON.stringify(body)
     })
     const data: LiderResponse = await res.json()

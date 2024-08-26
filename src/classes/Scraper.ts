@@ -42,10 +42,7 @@ export class Scraper {
 
     // Image
     try {
-      const link = data.items[0].images[0].imageUrl
-      const linkSplit = link.split('/')
-      const linkParsed = linkSplit.slice(0, -1).join('/')
-      this.image = linkParsed
+      this.image = data.items[0].images[0].imageUrl
     } catch (error) {
       console.error('Error al obtener la imagen', data.productName)
     }
@@ -188,6 +185,7 @@ export class Scraper {
         this.content = (unit === 'l' || unit === 'L') ? amount * 1000 : amount
       }
     }
+    if (Number.isNaN(this.content)) this.content = undefined
 
     // Package
     const packaging = getEspecification(data.specifications, 'Presentación')

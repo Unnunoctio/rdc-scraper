@@ -3,7 +3,7 @@ import type { Info } from '../types'
 
 // Spider
 export interface Spider {
-  info: Info
+  INFO: Info
   run: (paths: string[]) => Promise<[Updater[], Scraper[], Scraper[]]>
 }
 

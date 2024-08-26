@@ -1,50 +1,57 @@
-import { ObjectId } from 'mongodb'
 
-// Base de Datos
+// BD
 export interface DrinkDB extends Drink {
-  _id: ObjectId
-}
-
-export interface ImageDB extends Image {
-  _id: ObjectId
+  _id: string
+  createdAt?: Date
+  updatedAt?: Date
 }
 
 export interface InfoDB extends Info {
-  _id: ObjectId
+  _id: string
+  createdAt?: Date
+  updatedAt?: Date
 }
 
-export interface RecordDB extends Record {
-  _id: ObjectId
+export interface ImageDB extends Image {
+  _id: string
+  createdAt?: Date
+  updatedAt?: Date
+}
+
+export interface PriceLogDB extends PriceLog {
+  _id: string
+  createdAt?: Date
+  updatedAt?: Date
 }
 
 export interface WebsiteDB extends Website {
-  _id: ObjectId
+  _id: string
+  createdAt?: Date
+  updatedAt?: Date
 }
 
 export interface ProductDB extends Product {
-  _id: ObjectId
+  _id: string
+  createdAt?: Date
+  updatedAt?: Date
 }
 
-// Interface
+// INTERFACE
 export interface Drink {
+  drinkId: string
   name: string
   brand: string
-  alcoholic_grade: number
-  content: number
-  package: string
+  abv: number
+  volume: number
+  packaging: string
   category: string
-  sub_category: string
-  made_in: string
+  subCategory: string
+  origin: string
   variety?: string
-  bitterness?: number
-  temperature?: string
+  ibu?: number
+  servingTemp?: string
   strain?: string
   vineyard?: string
-}
-
-export interface Image {
-  small: string
-  large: string
 }
 
 export interface Info {
@@ -52,47 +59,71 @@ export interface Info {
   logo: string
 }
 
-export interface Record {
+export interface Image {
+  small: string
+  large: string
+}
+
+export interface PriceLog {
   price: number
   date: Date
 }
 
 export interface Website {
-  info: ObjectId
+  info: string
   path: string
   price: number
-  best_price: number
+  bestPrice: number
   average: number | null
-  last_update: number
-  in_stock: boolean
-  records: ObjectId[]
+  lastUpdate: string
+  inStock: boolean
+  priceLogs: string[]
 }
 
 export interface Product {
-  sku: number
+  sku: string
   quantity: number
-  images: ObjectId
-  drink: ObjectId
-  websites: ObjectId[]
-}
-
-// Files
-export interface ExcelFile {
-  filename: string
-  content: Buffer
+  images: string
+  drink: string
+  websites: string[]
 }
 
 // API
-export interface DrinksApi {
-  drinks: Drink[]
+export interface DrinksApiResponse {
+  status: boolean
+  data: DrinkApi[]
+  error: any
+  meta: {
+    timestamp: string
+    version: string
+    pagination: {
+      page: number
+      limit: number
+      totalPages: number
+      totalItems: number
+    }
+  }
 }
 
-// Proxy
-export interface Proxy {
-  protocol: string
-  ip: string
-  port: number
-  anonyme: string
-  ssl: boolean
-  proxy: string
+export interface DrinkApi {
+  _id?: string
+  name: string
+  brand: string
+  abv: number
+  volume: number
+  packaging: string
+  category: string
+  subCategory: string
+  origin: string
+  variety?: string
+  ibu?: number
+  servingTemp?: string
+  strain?: string
+  vineyard?: string
+}
+
+// FILES
+export interface ExcelFile {
+  filename: string
+  content: Buffer
 }

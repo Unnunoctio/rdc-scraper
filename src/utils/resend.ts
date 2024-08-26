@@ -23,7 +23,7 @@ export const sendEmail = async (notFound: Scraper[]): Promise<void> => {
         spiritsFile
       ]
     })
-    console.log('Email sended')
+    console.log('Email sent')
   } catch (error) {
     console.error('Error to send email')
   }
