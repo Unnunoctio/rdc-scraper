@@ -34,8 +34,8 @@ const uploadImages = async (url: string, category: string, brand: string, sku: s
 
   const folder = `${CLOUDINARY_FOLDER as string}/${category.toLowerCase()}/${brand.toLowerCase().replaceAll('/', '-')}/${sku}`
 
-  const small = await uploadImage(data, folder, `${sku}-200`, '200')
-  const large = await uploadImage(data, folder, `${sku}-600`, '600')
+  const small = await uploadImage(data, folder.replaceAll(' ', '-'), `${sku}-200`, '200')
+  const large = await uploadImage(data, folder.replaceAll(' ', '-'), `${sku}-600`, '600')
 
   return {
     small: small.replace(/\/v\d+\//, '/'),
