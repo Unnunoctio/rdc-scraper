@@ -2,6 +2,7 @@ import type { Info } from '../types'
 import type { LiderBody, LiderProduct, LiderResponse, Spider } from './types'
 import { Scraper, Updater } from '../classes'
 import { SpiderName } from '../enums'
+import { getUserAgent } from '../utils/header'
 
 export class Lider implements Spider {
   // region Metadata
@@ -14,7 +15,7 @@ export class Lider implements Spider {
     'X-Channel': 'SOD',
     Tenant: 'supermercado',
     'Content-Type': 'application/json',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
+    'User-Agent': getUserAgent()
   }
 
   private readonly START_URL = 'https://apps.lider.cl/supermercado/bff/category'
