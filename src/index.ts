@@ -5,9 +5,11 @@ import { isSaturday } from './utils/time'
 import { runSpiders } from './run-spiders'
 import { sendEmail } from './utils/resend'
 import { EmailSend } from './enums'
+import { viewPublicIPInfo } from './utils/ip'
 
 console.log('Starting App')
 console.log('Environment:', ENVIRONMENT)
+await viewPublicIPInfo()
 
 async function main (): Promise<void> {
   try {
