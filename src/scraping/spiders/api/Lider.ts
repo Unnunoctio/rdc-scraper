@@ -1,8 +1,8 @@
-import type { Info } from '../types'
-import type { LiderBody, LiderProduct, LiderResponse, Spider } from './types'
-import { Scraper, Updater } from '../classes'
+import type { Info } from '../../../types'
+import { randomUserAgent } from '../../../utils/agent'
+import { Scraper, Updater } from '../../classes'
 import { SpiderName } from '../enums'
-import { getUserAgent } from '../utils/header'
+import type { LiderBody, LiderProduct, LiderResponse, Spider } from '../types'
 
 export class Lider implements Spider {
   // region Metadata
@@ -14,29 +14,28 @@ export class Lider implements Spider {
   private readonly HEADERS = {
     'X-Channel': 'SOD',
     Tenant: 'supermercado',
-    'Content-Type': 'application/json',
-    'User-Agent': getUserAgent()
+    'Content-Type': 'application/json'
   }
 
   private readonly START_URL = 'https://apps.lider.cl/supermercado/bff/category'
 
   private readonly START_BODIES: LiderBody[] = [
     {
-      categories: 'Bebidas y Licores/Cervezas',
+      categories: 'La Boti/Cervezas',
       page: 1,
       facets: [],
       sortBy: '',
       hitsPerPage: 100
     },
     {
-      categories: 'Bebidas y Licores/Destilados',
+      categories: 'La Boti/Destilados',
       page: 1,
       facets: [],
       sortBy: '',
       hitsPerPage: 100
     },
     {
-      categories: 'Bebidas y Licores/Vinos y Espumantes',
+      categories: 'La Boti/Vinos y Espumantes',
       page: 1,
       facets: [],
       sortBy: '',
@@ -49,8 +48,6 @@ export class Lider implements Spider {
 
   // region RUN
   async run (paths: string[]): Promise<[Updater[], Scraper[], Scraper[]]> {
-    console.log('Running Lider Spider')
-
     const bodies = (await Promise.all(this.START_BODIES.map(async (body) => {
       return await this.getBodies(body)
     }))).flat()
@@ -91,29 +88,43 @@ export class Lider implements Spider {
   // endregion
 
   // region Functions
-  async getBodies (body: LiderBody): Promise<LiderBody[]> {
+  async liderFetch (body: LiderBody): Promise<any> {
+    const customHeaders = {
+      ...this.HEADERS,
+      'User-Agent': randomUserAgent()
+    }
+
     const res = await fetch(this.START_URL, {
       method: 'POST',
-      headers: this.HEADERS,
+      headers: customHeaders,
       body: JSON.stringify(body)
     })
-    const data: LiderResponse = await res.json()
+    return await res.json()
+  }
 
-    const bodies: LiderBody[] = []
-    for (let i = 1; i <= data.nbPages; i++) {
-      bodies.push({ ...body, page: i })
+  async getBodies (body: LiderBody): Promise<LiderBody[]> {
+    try {
+      const data: LiderResponse = await this.liderFetch(body)
+
+      const bodies: LiderBody[] = []
+      for (let i = 1; i <= data.nbPages; i++) {
+        bodies.push({ ...body, page: i })
+      }
+      return bodies
+    } catch (error) {
+      console.error('Error in fetch bodies', error)
+      return []
     }
-    return bodies
   }
 
   async getProducts (body: LiderBody): Promise<LiderProduct[]> {
-    const res = await fetch(this.START_URL, {
-      method: 'POST',
-      headers: this.HEADERS,
-      body: JSON.stringify(body)
-    })
-    const data: LiderResponse = await res.json()
-    return data.products
+    try {
+      const data: LiderResponse = await this.liderFetch(body)
+      return data.products
+    } catch (error) {
+      console.error('Error in fetch products', error)
+      return []
+    }
   }
   // endregion
 }

@@ -1,37 +1,36 @@
-import type { Info } from '../types'
-import type { CencosudAverage, CencosudProduct, CencosudResponse, Spider } from './types'
+import type { Info } from '../../../types'
+import { randomUserAgent } from '../../../utils/agent'
+import { Scraper, Updater } from '../../classes'
 import { SpiderName } from '../enums'
-import { Scraper, Updater } from '../classes'
-import { getUserAgent } from '../utils/header'
+import type { CencosudAverage, CencosudProduct, CencosudResponse, Spider } from '../types'
 
-export class Jumbo implements Spider {
+export class Santa implements Spider {
   // region Metadata
   public readonly INFO: Info = {
-    name: SpiderName.JUMBO,
-    logo: 'https://assets.jumbo.cl/favicon/favicon-192.png'
+    name: SpiderName.SANTA,
+    logo: 'https://assets.santaisabel.cl/favicon/favicon-196x196.png'
   }
 
   private readonly HEADERS = {
     apiKey: 'WlVnnB7c1BblmgUPOfg',
-    'User-Agent': getUserAgent()
+    'x-account': 'pedrofontova',
+    'x-consumer': 'santaisabel'
   }
 
   private readonly START_URLS = [
-    'https://sm-web-api.ecomm.cencosud.com/catalog/api/v4/products/vinos-cervezas-y-licores/cervezas',
-    'https://sm-web-api.ecomm.cencosud.com/catalog/api/v4/products/vinos-cervezas-y-licores/destilados',
-    'https://sm-web-api.ecomm.cencosud.com/catalog/api/v4/products/vinos-cervezas-y-licores/vinos'
+    'https://sm-web-api.ecomm.cencosud.com/catalog/api/v4/pedrofontova/products/vinos-cervezas-y-licores/cervezas',
+    'https://sm-web-api.ecomm.cencosud.com/catalog/api/v4/pedrofontova/products/vinos-cervezas-y-licores/destilados',
+    'https://sm-web-api.ecomm.cencosud.com/catalog/api/v4/pedrofontova/products/vinos-cervezas-y-licores/vinos'
   ]
 
-  private readonly PAGE_URL = 'https://www.jumbo.cl'
-  private readonly PRODUCT_URL = 'https://sm-web-api.ecomm.cencosud.com/catalog/api/v1/product'
+  private readonly PAGE_URL = 'https://www.santaisabel.cl'
+  private readonly PRODUCT_URL = 'https://sm-web-api.ecomm.cencosud.com/catalog/api/v1/pedrofontova/product'
   private readonly AVERAGE_URL = 'https://sm-web-api.ecomm.cencosud.com/catalog/api/v1/reviews/ratings'
   private readonly AVERAGE_STEP = 300
   // endregion
 
   // region RUN
   async run (paths: string[]): Promise<[Updater[], Scraper[], Scraper[]]> {
-    console.log(`Running ${SpiderName.JUMBO} Spider`)
-
     const pages = (await Promise.all(this.START_URLS.map(async (url) => {
       return await this.getPages(url)
     }))).flat()
@@ -68,10 +67,19 @@ export class Jumbo implements Spider {
   // endregion
 
   // region Functions
+  async santaFetch (url: string): Promise<any> {
+    const customHeaders = {
+      ...this.HEADERS,
+      'User-Agent': randomUserAgent()
+    }
+
+    const res = await fetch(url, { headers: customHeaders })
+    return await res.json()
+  }
+
   async getPages (url: string): Promise<string[]> {
     try {
-      const res = await fetch(`${url}?sc=11`, { headers: this.HEADERS })
-      const data: CencosudResponse = await res.json()
+      const data: CencosudResponse = await this.santaFetch(`${url}?sc=11`)
 
       const total = Math.ceil(data.recordsFiltered / 40)
       const pages = Array.from({ length: total }, (_, i) => `${url}?sc=11&page=${i + 1}`)
@@ -84,8 +92,7 @@ export class Jumbo implements Spider {
 
   async getProducts (page: string): Promise<CencosudProduct[]> {
     try {
-      const res = await fetch(page, { headers: this.HEADERS })
-      const data: CencosudResponse = await res.json()
+      const data: CencosudResponse = await this.santaFetch(page)
       return data.products
     } catch (error) {
       console.error(`Error in fetch products: ${page}`, error)
@@ -103,14 +110,13 @@ export class Jumbo implements Spider {
       return scraped
     }))
 
-    const productsFiltered = products.filter(product => product !== undefined) as Scraper[]
+    const productsFiltered = products.filter(product => product !== undefined)
     return [productsFiltered.filter(p => !p.isIncomplete()), productsFiltered.filter(p => p.isIncomplete())]
   }
 
   async getProduct (url: string): Promise<CencosudProduct | undefined> {
     try {
-      const res = await fetch(url, { headers: this.HEADERS })
-      const data: CencosudProduct[] = await res.json()
+      const data: CencosudProduct[] = await this.santaFetch(url)
       return data[0]
     } catch (error) {
       console.error(`Error in fetch: ${url}`)
@@ -122,8 +128,7 @@ export class Jumbo implements Spider {
     for (let i = 0; i < items.length; i += this.AVERAGE_STEP) {
       const skus = items.slice(i, i + this.AVERAGE_STEP).map((i: any) => i.productSku).join(',')
       try {
-        const res = await fetch(`${this.AVERAGE_URL}?ids=${skus}`, { headers: this.HEADERS })
-        const data: CencosudAverage[] = await res.json()
+        const data: CencosudAverage[] = await this.santaFetch(`${this.AVERAGE_URL}?ids=${skus}`)
         for (const item of items) {
           const average = data.find(a => a.id === item.productSku)
           if (average !== undefined && average.totalCount !== 0) item.average = average.average

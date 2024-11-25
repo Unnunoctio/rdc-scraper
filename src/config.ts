@@ -1,13 +1,22 @@
-export const DB_URI = Bun.env.DB_URI
+// AWS CONFIG
+export const AWS_REGION = Bun.env.AWS_REGION
+export const AWS_ACCESS_KEY_ID = Bun.env.AWS_ACCESS_KEY_ID
+export const AWS_SECRET_ACCESS_KEY = Bun.env.AWS_SECRET_ACCESS_KEY
 
+// DYNAMODB
+export const DRINK_TABLE = Bun.env.DRINK_TABLE
+export const INFO_TABLE = Bun.env.INFO_TABLE
+export const PRODUCT_TABLE = Bun.env.PRODUCT_TABLE
+
+// DRINK API
 export const DRINKS_API = Bun.env.DRINKS_API
 
-export const RESEND_KEY = Bun.env.RESEND_API_KEY
+// RESEND
+export const RESEND_KEY = Bun.env.RESEND_KEY
 export const RESEND_SEND = Bun.env.RESEND_SEND
 
+// CLOUDINARY
 export const CLOUDINARY_NAME = Bun.env.CLOUDINARY_NAME
 export const CLOUDINARY_FOLDER = Bun.env.CLOUDINARY_FOLDER
 export const CLOUDINARY_API_KEY = Bun.env.CLOUDINARY_API_KEY
 export const CLOUDINARY_API_SECRET = Bun.env.CLOUDINARY_SECRET_KEY
-
-export const ENVIRONMENT = Bun.env.NODE_ENV

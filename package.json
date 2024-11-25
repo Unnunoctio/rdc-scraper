@@ -1,7 +1,7 @@
 {
   "name": "rdc-scraper",
-  "version": "1.2.0",
-  "module": "index.ts",
+  "version": "1.0.0",
+  "module": "src/index.ts",
   "type": "module",
   "scripts": {
     "start": "bun run src/index.ts"
@@ -14,11 +14,10 @@
     "typescript": "5.0.0"
   },
   "dependencies": {
-    "cloudinary": "2.4.0",
-    "mongoose": "8.5.3",
-    "nanoid": "5.0.7",
-    "resend": "3.3.0",
-    "xlsx": "0.18.5"
+    "@aws-sdk/client-dynamodb": "3.696.0",
+    "@aws-sdk/lib-dynamodb": "3.696.0",
+    "cloudinary": "2.5.1",
+    "nanoid": "5.0.8"
   },
   "eslintConfig": {
     "parserOptions": {

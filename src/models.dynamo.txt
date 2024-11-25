@@ -1,0 +1,83 @@
+##### DRINK_TABLE
+// DRINK
+{
+  PK: "DRINK#{{drinkId}}"
+  SK: "METADATA"
+  entity: "DRINK"
+  name: "{{name}}"
+  brand: "{{brand}}"
+  abv: {{abv}}
+  volume: {{volume}}
+  packaging: "{{packaging}}"
+  category: "{{category}}"
+  subCategory: "{{subCategory}}"
+  origin: "{{origin}}"
+}
+
+{
+  PK: "DRINK#{{drinkId}}"
+  SK: "EXTRA"
+  entity: "DRINK_EXTRA"
+  // ? CERVEZAS (OPTIONAL)
+  variety: "{{variety}}"
+  ibu: {{ibu}}
+  servingTemp: "{{servingTemp}}"
+  // ? VINOS (OPTIONAL)
+  strain: "{{strain}}"
+  vineyard: "{{vineyard}}"
+}
+
+##### INFO_TABLE
+// INFO
+{
+  PK: "INFO#{{infoId}}"
+  SK: "METADATA"
+  entity: "INFO"
+  name: "{{name}}"
+  logo: "{{logo}}"
+}
+
+##### PRODUCT_TABLE
+// PRODUCT
+{
+  PK: "PRODUCT#{{sku}}"
+  SK: "METADATA"
+  entity: "PRODUCT"
+  title: {{title}}
+  slug: "{{slug}}"
+  quantity: {{quantity}}
+  drink: "DRINK#{{drinkId}}"
+}
+
+// IMAGES
+{
+  PK: "PRODUCT#{{sku}}"
+  SK: "IMAGES"
+  entity: "PRODUCT_IMAGES"
+  small: "{{small}}"
+  large: "{{large}}"
+  original: "{{original}}"
+}
+
+// WEBSITE
+{
+  PK: "PRODUCT#{{sku}}"
+  SK: "WEBSITE#{{websiteId}}"
+  entity: "PRODUCT_WEBSITE"
+  info: "INFO#{{infoId}}"
+  url: "{{url}}"
+  price: {{price}}
+  bestPrice: {{bestPrice}}
+  average: {{average}}
+  lastUpdate: "{{lastUpdate}}"
+  inStock: {{inStock}}
+}
+
+// PRICE LOG
+{
+  PK: "PRODUCT#{{sku}}"
+  SK: "WEBSITE#{{websiteId}}#PRICELOG#{{fecha}}"
+  entity: "PRODUCT_PRICELOG"
+  price: {{price}}
+  date: "{{fecha}}"
+}
