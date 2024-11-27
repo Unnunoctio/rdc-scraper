@@ -1,9 +1,10 @@
-import { sleepSync } from 'bun'
-import { generateWatcher } from '../../utils/nanoid'
-import type { Scraper } from '../classes'
-import { Jumbo, Lider, Santa } from './api'
-import { SpiderName } from './enums'
-import type { Spider } from './types'
+import type { Scraper } from "@/scraping/classes"
+import { Jumbo, Lider, Santa } from "@/scraping/spiders/api"
+import { SpiderName } from "@/scraping/spiders/enums"
+import type { Spider } from "@/scraping/spiders/types"
+import { generateWatcher } from "@/utils/nanoid"
+import { sleepSync } from "bun"
+
 
 const runSpider = async (spider: Spider, name: SpiderName, watcher: string): Promise<Scraper[]> => {
   console.time(`${name} Spider`)

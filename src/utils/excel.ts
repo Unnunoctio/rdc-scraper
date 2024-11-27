@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx'
-import type { Scraper } from '../scraping/classes'
-import type { ExcelFile } from '../types'
+import type { Scraper } from '@/scraping/classes'
+import type { ExcelFile } from '@/types'
 
 export const createExcel = async (products: Scraper[], title: string): Promise<ExcelFile> => {
   const filename = `${title}.xlsx`

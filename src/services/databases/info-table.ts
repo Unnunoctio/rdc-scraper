@@ -1,8 +1,8 @@
+import { INFO_TABLE } from '@/config'
+import { dynamodb } from '@/services/databases/dynamodb'
+import type { Info } from '@/types'
+import { generateInfoId } from '@/utils/nanoid'
 import type { PutCommandInput, ScanCommandInput } from '@aws-sdk/lib-dynamodb'
-import { INFO_TABLE } from '../../config'
-import type { Info } from '../../types'
-import { generateInfoId } from '../../utils/nanoid'
-import { dynamodb } from './dynamodb'
 
 const findInfo = async (info: Info): Promise<string | undefined> => {
   const params: ScanCommandInput = {

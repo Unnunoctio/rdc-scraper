@@ -1,6 +1,6 @@
 import { DynamoDBClient, type DynamoDBClientConfig } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, PutCommand, ScanCommand, type PutCommandInput, type ScanCommandInput } from '@aws-sdk/lib-dynamodb'
-import { AWS_ACCESS_KEY_ID, AWS_REGION, AWS_SECRET_ACCESS_KEY } from '../../config'
+import { AWS_ACCESS_KEY_ID, AWS_REGION, AWS_SECRET_ACCESS_KEY } from '@/config'
 
 const AWS_CONFIG: DynamoDBClientConfig = {
   region: AWS_REGION,

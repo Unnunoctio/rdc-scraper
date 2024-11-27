@@ -1,4 +1,4 @@
-import type { CencosudProduct, LiderProduct } from '../spiders/types'
+import type { CencosudProduct, LiderProduct } from "@/scraping/spiders/types"
 
 export class Updater {
   productSku: string | undefined

@@ -1,9 +1,9 @@
+import { DRINK_TABLE } from '@/config'
+import type { Scraper } from '@/scraping/classes'
+import { dynamodb } from '@/services/databases/dynamodb'
+import type { DrinkApi } from '@/types'
+import { getDrinksApi } from '@/utils/drinks-api'
 import type { PutCommandInput, ScanCommandInput } from '@aws-sdk/lib-dynamodb'
-import { DRINK_TABLE } from '../../config'
-import type { Scraper } from '../../scraping/classes'
-import type { DrinkApi } from '../../types'
-import { getDrinksApi } from '../../utils/drinks-api'
-import { dynamodb } from './dynamodb'
 
 const saveDrink = async (drink: DrinkApi): Promise<void> => {
   const params: PutCommandInput = {

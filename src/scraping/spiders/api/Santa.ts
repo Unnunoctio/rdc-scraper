@@ -1,8 +1,8 @@
-import type { Info } from '../../../types'
-import { randomUserAgent } from '../../../utils/agent'
-import { Scraper, Updater } from '../../classes'
-import { SpiderName } from '../enums'
-import type { CencosudAverage, CencosudProduct, CencosudResponse, Spider } from '../types'
+import { Scraper, Updater } from "@/scraping/classes"
+import { SpiderName } from "@/scraping/spiders/enums"
+import type { CencosudAverage, CencosudProduct, CencosudResponse, Spider } from "@/scraping/spiders/types"
+import type { Info } from "@/types"
+import { randomUserAgent } from "@/utils/agent"
 
 export class Santa implements Spider {
   // region Metadata

@@ -1,4 +1,4 @@
-import type { CencosudProduct, LiderProduct, LiderSpecification } from '../spiders/types'
+import type { CencosudProduct, LiderProduct, LiderSpecification } from "@/scraping/spiders/types"
 
 export class Scraper {
   website: string

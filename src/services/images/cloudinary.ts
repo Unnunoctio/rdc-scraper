@@ -1,6 +1,6 @@
+import { CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET, CLOUDINARY_FOLDER, CLOUDINARY_NAME } from '@/config'
+import type { Image } from '@/types'
 import { v2 as cloudinaryV2, type UploadApiResponse } from 'cloudinary'
-import { CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET, CLOUDINARY_FOLDER, CLOUDINARY_NAME } from '../../config'
-import type { Image } from '../../types'
 
 const startCloudinary = (): void => {
   cloudinaryV2.config({
