@@ -43,3 +43,9 @@ export interface Image {
   large: string
   original: string
 }
+
+// FILES
+export interface ExcelFile {
+  filename: string
+  content: Buffer
+}
