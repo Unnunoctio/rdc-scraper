@@ -17,7 +17,9 @@
     "@aws-sdk/client-dynamodb": "3.696.0",
     "@aws-sdk/lib-dynamodb": "3.696.0",
     "cloudinary": "2.5.1",
-    "nanoid": "5.0.8"
+    "nanoid": "5.0.8",
+    "resend": "4.0.1",
+    "xlsx": "0.18.5"
   },
   "eslintConfig": {
     "parserOptions": {
