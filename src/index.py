@@ -7,6 +7,7 @@ from services.mongodb.mongodb import MongoDB
 from services.mongodb.product_table_service import ProductTableService
 from services.mongodb.website_table_service import WebsiteTableService
 from spiders.jumbo_spider import JumboSpider
+from spiders.santa_spider import SantaSpider
 from spiders.spider_interface import SpiderInterface
 from spiders.spider_types import SpiderName
 from utils.generate import generate_watcher
@@ -43,6 +44,9 @@ async def main(mongodb_connection: MongoDB) -> None:
     time.sleep(5)
 
     # TODO: SANTA
+    santa_not_found = await run_spider(spider=SantaSpider(), name=SpiderName.SANTA, paths=paths, drinks=drinks, watcher=watcher, product_service=product_service, website_service=website_service, drink_service=drink_service)
+    not_found_drinks.extend(santa_not_found)
+    time.sleep(5)
 
     # TODO: LIDER
 

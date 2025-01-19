@@ -4,7 +4,8 @@ from typing import Optional, TypedDict
 
 # TODO: SPIDER TYPES
 class SpiderName(Enum):
-    JUMBO = "Jumbo"
+    JUMBO = "Jumbo",
+    SANTA = "Santa Isabel"
 
 # TODO: CENCOSUD TYPES
 class CencosudCommertialOffer(TypedDict):
