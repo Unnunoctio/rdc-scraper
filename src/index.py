@@ -53,14 +53,20 @@ async def main(mongodb_connection: MongoDB) -> None:
     # TODO: UPADTE DB
     website_service.update_websites_without_stock(watcher=watcher)
 
+
 try:
+    process_start_time = time.time()
+    print("Process started.")
+
     mongodb_connection = MongoDB()
     asyncio.run(main(mongodb_connection=mongodb_connection))
-    print("Process finished successfully.")
 except Exception as e:
     print("Process failed with error:", e)
     traceback.print_exc()
 finally:
     mongodb_connection.close_connection()
+
+    process_end_time = time.time()
+    print(f"Process finished in {process_end_time - process_start_time} seconds.")
     exit(0)
     
