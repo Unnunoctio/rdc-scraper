@@ -84,7 +84,7 @@ class WebsiteTableService():
             if len(website["priceLogs"]) == 0:
                 price_log_id = self.price_log_service.save_price_log(price=update.best_price)
             else:
-                price_log_id = self.price_log_service.save_or_update_price_log(price_log_id=website["priceLogs"][0], price=update.best_price)
+                price_log_id = self.price_log_service.save_or_update_price_log(price_log_id=website["priceLogs"][-1], price=update.best_price)
 
             if price_log_id is not None:
                 self.collection.update_one(
