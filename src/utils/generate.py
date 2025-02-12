@@ -38,7 +38,7 @@ def generate_title(drink: dict, quantity: int, is_url: bool = False) -> str:
         title += f"{drink['abv']}° "
 
     if drink["volume"] >= 1000:
-        title += f"{(drink['volume']/1000):.2f}L"
+        title += f"{(drink['volume']/1000):.2f}".rstrip('0').rstrip('.')  + "L"
     else:
         title += f"{drink['volume']}cc"
 
