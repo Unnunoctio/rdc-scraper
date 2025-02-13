@@ -1,6 +1,7 @@
 
 import asyncio
 import traceback
+
 from pymongo.collection import Collection
 
 from classes.new_product import NewProduct
@@ -76,3 +77,7 @@ class ProductTableService():
         tasks = [self.save_product(info_id=info_id, product=product, drink=drink_service.find_drink_by_product(product=product, drinks=drinks), watcher=watcher) for product in products]
         not_found_products = await asyncio.gather(*tasks)
         return [product for product in not_found_products if product is not None]
+    
+    def get_all_slug_products(self) -> list[dict]:
+        slug_products = list(self.collection.find({}, { "_id": 0, "slug": 1, "title": 1 }))
+        return slug_products

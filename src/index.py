@@ -4,6 +4,7 @@ import traceback
 from datetime import datetime
 
 from config import RESEND_SEND
+from services.dynamo.slug_table_service import SlugTableService
 from services.mongodb.drink_table_service import DrinkTableService
 from services.mongodb.mongodb import MongoDB
 from services.mongodb.product_table_service import ProductTableService
@@ -55,6 +56,10 @@ async def main(mongodb_connection: MongoDB) -> None:
 
     # TODO: UPADTE DB
     website_service.update_websites_without_stock(watcher=watcher)
+    
+    # TODO: SAVE NEW SLUGS INTO DYNAMODB
+    slug_products = product_service.get_all_slug_products()
+    SlugTableService().save_slugs(slug_products=slug_products)
 
     # TODO: EMAIL 
     if RESEND_SEND == "SEND" and datetime.now().weekday() == 5:
@@ -76,4 +81,3 @@ finally:
     process_end_time = time.time()
     print(f"Process finished in {process_end_time - process_start_time} seconds.")
     exit(0)
-    
