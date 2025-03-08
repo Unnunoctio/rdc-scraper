@@ -34,7 +34,7 @@ class ProductTableService():
     async def save_product(self, info_id: str, product: NewProduct, drink: dict | None, watcher: str) -> NewProduct | None:
         if drink is None:
             return NewProduct
-        
+
         try:
             product_db = self.collection.find_one(filter={"drinkId": drink["_id"], "quantity": product.quantity})
             if product_db is not None:
@@ -62,22 +62,18 @@ class ProductTableService():
                             update={"$set": { "imageId": new_image_id }, "$push": {"websites": new_website_id}}
                         )
                         return None
-            
+
             return NewProduct
         except Exception:
             print("Error while saving product")
             traceback.print_exc()
             return NewProduct
-    
+
     async def save_many_products(self, products: list[NewProduct], info: dict, drinks: list[dict], watcher: str, drink_service: DrinkTableService) -> list[NewProduct]:
         info_id = self.info_service.get_info_id(info=info)
         if info_id is None:
             return products
-        
+
         tasks = [self.save_product(info_id=info_id, product=product, drink=drink_service.find_drink_by_product(product=product, drinks=drinks), watcher=watcher) for product in products]
         not_found_products = await asyncio.gather(*tasks)
         return [product for product in not_found_products if product is not None]
-    
-    def get_all_slug_products(self) -> list[dict]:
-        slug_products = list(self.collection.find({}, { "_id": 0, "slug": 1, "title": 1 }))
-        return slug_products
