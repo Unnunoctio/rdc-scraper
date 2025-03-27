@@ -4,6 +4,7 @@ import traceback
 from datetime import datetime
 
 from config import RESEND_SEND
+from services.amplify.rdc_amplify_service import RDCAmplifyService
 from services.mongodb.drink_table_service import DrinkTableService
 from services.mongodb.mongodb import MongoDB
 from services.mongodb.product_table_service import ProductTableService
@@ -34,7 +35,7 @@ async def main(mongodb_connection: MongoDB) -> None:
     product_service = ProductTableService(mongodb_connection=mongodb_connection)
     website_service = WebsiteTableService(mongodb_connection=mongodb_connection)
     drink_service = DrinkTableService(mongodb_connection=mongodb_connection)
-    
+
     paths = website_service.get_all_paths()
     drinks = drink_service.get_drinks()
     watcher = generate_watcher()
@@ -67,6 +68,9 @@ try:
 
     mongodb_connection = MongoDB()
     asyncio.run(main(mongodb_connection=mongodb_connection))
+
+    print("Redeploying Amplify App")
+    RDCAmplifyService().redeploy_app()
 except Exception as e:
     print("Process failed with error:", e)
     traceback.print_exc()
