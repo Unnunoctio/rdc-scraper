@@ -19,6 +19,7 @@ class Logger:
         "CRITICAL": '🔥',
         "SUCCESS": '✅',
         "ENV_KEY": '🔑',
+        "TIMER": '🕒',
     }
 
     COLORS = {
