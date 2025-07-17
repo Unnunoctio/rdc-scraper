@@ -8,17 +8,17 @@ class Generator:
     ALPHABET_ALPHA = "abcdefghijklmnopqrstuvwxyz"
 
     @staticmethod
-    def generate_hex_id(size: int = 8) -> str:
+    def generate_hex_id(size: int = 8) -> str | None:
         """Generar ID con un alfabeto hexadecimal"""
         return generate(size=size, alphabet=Generator.ALPHABET_HEX)
 
     @staticmethod
-    def generate_dec_id(size: int = 8) -> str:
+    def generate_dec_id(size: int = 8) -> str | None:
         """Generar ID con un alfabeto decimal"""
         return generate(size=size, alphabet=Generator.ALPHABET_DEC)
     
     @staticmethod
-    def generate_alpha_id(size: int = 8) -> str:
+    def generate_alpha_id(size: int = 8) -> str | None:
         """Generar ID con un alfabeto alfabético"""
         return generate(size=size, alphabet=Generator.ALPHABET_ALPHA)
 
@@ -51,4 +51,5 @@ class Generator:
         title = Generator.generate_title(drink=drink, quantity=quantity, is_url=True)
         slug_title = (title.lower().replace("°", "").replace("+", "").replace(". ", "-").replace(".", "-").replace(" ", "-"))
         slug_title = unicodedata.normalize("NFD", slug_title).encode("ascii", "ignore").decode("utf-8")
+        
         return f"{sku}-{slug_title}"

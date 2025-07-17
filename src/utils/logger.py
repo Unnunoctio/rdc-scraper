@@ -50,7 +50,7 @@ class Logger:
         return f"{timestamp} | {level.ljust(8)} | {formatted_prefix} {message}"
     
     @classmethod
-    def _write_to_console(cls, level: str, formatted_message: str):
+    def _write_to_console(cls, level: str, formatted_message: str) -> None:
         """Escribir mensaje a consola con color"""
         color = cls.COLORS.get(level, "")
         reset = cls.COLORS['RESET']
@@ -65,7 +65,7 @@ class Logger:
         print(colored_message)
     
     @classmethod
-    def _log(cls, level: str, prefix: str, message: str):
+    def _log(cls, level: str, prefix: str, message: str) -> None:
         """Método interno para logging"""
         formatted_message = cls._format_message(level, prefix, message)
         
@@ -73,7 +73,7 @@ class Logger:
         cls._write_to_console(level, formatted_message)
 
     @staticmethod
-    def debug(prefix: str, message: str):
+    def debug(prefix: str, message: str) -> None:
         """Log nivel DEBUG"""
         from config import ENVIRONMENT
         
@@ -81,26 +81,26 @@ class Logger:
             Logger._log("DEBUG", prefix, message)
     
     @staticmethod
-    def info(prefix: str, message: str):
+    def info(prefix: str, message: str) -> None:
         """Log nivel INFO"""
         Logger._log("INFO", prefix, message)
     
     @staticmethod
-    def warning(prefix: str, message: str):
+    def warning(prefix: str, message: str) -> None:
         """Log nivel WARNING"""
         Logger._log("WARNING", prefix, message)
     
     @staticmethod
-    def error(prefix: str, message: str):
+    def error(prefix: str, message: str) -> None:
         """Log nivel ERROR"""
         Logger._log("ERROR", prefix, message)
     
     @staticmethod
-    def critical(prefix: str, message: str):
+    def critical(prefix: str, message: str) -> None:
         """Log nivel CRITICAL"""
         Logger._log("CRITICAL", prefix, message)
     
     @staticmethod
-    def success(prefix: str, message: str):
+    def success(prefix: str, message: str) -> None:
         """Log nivel SUCCESS"""
         Logger._log("SUCCESS", prefix, message)

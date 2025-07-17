@@ -3,19 +3,19 @@ class Product:
     def __init__(self, type: str, website: str) -> None:
         self.type = type
         self.website = website
-        self.url: str = None
-        self.sku: str = None
-        self.title: str = None
-        self.brand: str = None
-        self.category: str = None
-        self.price: int = None
-        self.best_price: int = None
-        self.image: str = None
-        self.average: float = None
-        self.abv: float = None
-        self.volume: int = None
-        self.quantity: int = None
-        self.packaging: str = None
+        self.url: str | None = None
+        self.sku: str | None = None
+        self.title: str | None = None
+        self.brand: str | None = None
+        self.category: str | None = None
+        self.price: int | None = None
+        self.best_price: int | None = None
+        self.image: str | None = None
+        self.average: float | None = None
+        self.abv: float | None = None
+        self.volume: int | None = None
+        self.quantity: int | None = None
+        self.packaging: str | None = None
     
     def __str__(self) -> str:
         return f"""

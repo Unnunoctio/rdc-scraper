@@ -10,9 +10,9 @@ class Crawler:
         # Set up the spiders
         pass
     
-    def run(self):
+    def run(self) -> None:
         pass
 
-    def run_spider(self, spider, paths, drinks, watcher):
+    def run_spider(self, spider, paths, drinks, watcher) -> None:
         pass
     

@@ -3,7 +3,7 @@ import json
 from typing import Optional
 
 from aiohttp import ClientSession, ClientTimeout, TCPConnector
-from playwright.async_api import BrowserContext, async_playwright
+from playwright.async_api import Playwright, Browser, BrowserContext, async_playwright
 
 from utils.logger import Logger
 from utils.user_agent import get_random_user_agent
@@ -16,10 +16,10 @@ class WebFetcher:
         self.MAX_CONCURRENT = max_concurrent
         self.TIMEOUT = timeout
 
-        self._session = None
-        self._playwright = None
-        self._browser = None
-        self._context = None
+        self._session: ClientSession | None = None
+        self._playwright: Playwright | None = None
+        self._browser: Browser | None = None
+        self._context: BrowserContext | None = None
 
     async def _get_session(self) -> ClientSession:
         """Obtener o Crear una sesión de aiohttp"""
@@ -42,7 +42,7 @@ class WebFetcher:
             )
             self._context = await self._browser.new_context(
                 user_agent=get_random_user_agent(),
-                viewport={"width": 1920, "height": 1080},
+                viewport={"width": 1920, "height": 1080}
             )
 
         return self._context
