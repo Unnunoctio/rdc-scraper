@@ -3,7 +3,7 @@ import json
 from typing import Optional
 
 from aiohttp import ClientSession, ClientTimeout, TCPConnector
-from playwright.async_api import Playwright, Browser, BrowserContext, async_playwright
+from playwright.async_api import Browser, BrowserContext, Playwright, async_playwright
 
 from utils.logger import Logger
 from utils.user_agent import get_random_user_agent
@@ -27,9 +27,7 @@ class WebFetcher:
             connector = TCPConnector(limit=100, limit_per_host=self.MAX_CONCURRENT)
             timeout = ClientTimeout(total=self.TIMEOUT)
             headers = {"User-Agent": get_random_user_agent()}
-            self._session = ClientSession(
-                connector=connector, timeout=timeout, headers=headers
-            )
+            self._session = ClientSession(connector=connector, timeout=timeout, headers=headers)
 
         return self._session
 
@@ -38,12 +36,54 @@ class WebFetcher:
         if self._playwright is None:
             self._playwright = await async_playwright().start()
             self._browser = await self._playwright.chromium.launch(
-                headless=True, args=["--no-sandbox", "--disable-dev-shm-usage"]
+                headless=False,
+                args=[
+                    # Evasión de detección
+                    "--disable-blink-features=AutomationControlled",
+                    "--disable-dev-shm-usage",
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                    "--disable-web-security",
+                    # Rendimiento
+                    "--disable-background-timer-throttling",
+                    "--disable-backgrounding-occluded-windows",
+                    "--disable-renderer-backgrounding",
+                    "--disable-features=TranslateUI",
+                    "--disable-features=VizDisplayCompositor",
+                    # Recursos
+                    "--disable-extensions",
+                    "--disable-plugins",
+                    "--disable-images",  # No cargar imágenes (más rápido)
+                    "--disable-default-apps",
+                    "--disable-sync",
+                    # Display
+                    "--window-size=1920,1080",
+                    "--hide-scrollbars",
+                    "--mute-audio",
+                    # Memoria
+                    "--memory-pressure-off",
+                    "--max_old_space_size=4096",
+                    # Red
+                    "--aggressive-cache-discard",
+                    "--disable-background-networking",
+                    "--disable-client-side-phishing-detection",
+                    "--disable-component-update",
+                    "--disable-domain-reliability",
+                    "--disable-hang-monitor",
+                    "--disable-ipc-flooding-protection",
+                    "--disable-popup-blocking",
+                    "--disable-prompt-on-repost",
+                    "--disable-sync",
+                    "--disable-translate",
+                    "--metrics-recording-only",
+                    "--no-first-run",
+                    "--safebrowsing-disable-auto-update",
+                    "--enable-automation",
+                    "--password-store=basic",
+                    "--use-mock-keychain",
+                ],
             )
-            self._context = await self._browser.new_context(
-                user_agent=get_random_user_agent(),
-                viewport={"width": 1920, "height": 1080}
-            )
+            self._context = await self._browser.new_context(user_agent=get_random_user_agent())
 
         return self._context
 
@@ -58,9 +98,7 @@ class WebFetcher:
                         html = await response.text()
                         return html
                     else:
-                        Logger.error(
-                            "NETWORK", f"HTTP {response.status}: {response.reason}"
-                        )
+                        Logger.error("NETWORK", f"HTTP {response.status}: {response.reason}")
             except Exception as e:
                 Logger.error("NETWORK", f"Error al obtener HTML: {e}")
 
@@ -83,9 +121,7 @@ class WebFetcher:
                         except json.JSONDecodeError as e:
                             Logger.error("SYSTEM", f"Error al decodificar JSON: {e}")
                     else:
-                        Logger.error(
-                            "NETWORK", f"HTTP {response.status}: {response.reason}"
-                        )
+                        Logger.error("NETWORK", f"HTTP {response.status}: {response.reason}")
             except Exception as e:
                 Logger.error("NETWORK", f"Error al obtener HTML: {e}")
 
