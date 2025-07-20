@@ -15,9 +15,9 @@ class Amplify:
             try:
                 self.client = self.session.client("amplify")
             except Exception as e:
-                Logger.error("AUTH", "Error creando el cliente de Amplify en AWS:", e)
+                Logger.error("AUTH", "Error creating a Amplify client in AWS:", e)
         except Exception as e:
-            Logger.error("AUTH", "Error creando una sesion de AWS:", e)
+            Logger.error("AUTH", "Error creating a session in AWS:", e)
 
     def redeploy_app(self) -> None:
         try:
@@ -27,4 +27,4 @@ class Amplify:
                 jobType="RELEASE",
             )
         except Exception as e:
-            Logger.error("ERROR", "Error redeployando la app de Amplify:", e)
+            Logger.error("ERROR", "Error redeploy app in Amplify:", e)

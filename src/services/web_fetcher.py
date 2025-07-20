@@ -100,7 +100,7 @@ class WebFetcher:
                     else:
                         Logger.error("NETWORK", f"HTTP {response.status}: {response.reason}")
             except Exception as e:
-                Logger.error("NETWORK", f"Error al obtener HTML: {e}")
+                Logger.error("NETWORK", f"Error getting HTML: {e}")
 
             if attempt < self.MAX_RETRIES - 1:
                 await asyncio.sleep(self.DELAY)
@@ -119,11 +119,11 @@ class WebFetcher:
                             json_data = await response.json()
                             return json_data
                         except json.JSONDecodeError as e:
-                            Logger.error("SYSTEM", f"Error al decodificar JSON: {e}")
+                            Logger.error("SYSTEM", f"Error decoding JSON: {e}")
                     else:
                         Logger.error("NETWORK", f"HTTP {response.status}: {response.reason}")
             except Exception as e:
-                Logger.error("NETWORK", f"Error al obtener HTML: {e}")
+                Logger.error("NETWORK", f"Error getting HTML: {e}")
 
             if attempt < self.MAX_RETRIES - 1:
                 await asyncio.sleep(self.DELAY)
@@ -149,7 +149,7 @@ class WebFetcher:
 
                 return html
             except Exception as e:
-                Logger.error("NETWORK", f"Error al obtener HTML: {e}")
+                Logger.error("NETWORK", f"Error getting HTML: {e}")
 
                 # Close the page if it's open
                 try:

@@ -19,9 +19,9 @@ class S3Bucket:
             try:
                 self.client = self.session.client("s3")
             except Exception as e:
-                Logger.error("AUTH", "Error creando el cliente de S3 en AWS:", e)
+                Logger.error("AUTH", "Error creating a S3 client in AWS:", e)
         except Exception as e:
-            Logger.error("AUTH", "Error creando una sesion de AWS:", e)
+            Logger.error("AUTH", "Error creating a session in AWS:", e)
 
     def upload_image_file(self, image_url: str, file_name: str, size: tuple[int, int] = (1500, 1500)) -> str | None:
         try:
@@ -49,7 +49,7 @@ class S3Bucket:
 
                 return f"https://{IMAGES_BUCKET}.s3.{AWS_REGION}.amazonaws.com/{file_name}"
         except Exception as e:
-            Logger.error("ERROR", "Error subiendo imagen a S3:", e)
+            Logger.error("ERROR", "Error uploading image to S3:", e)
             return None
 
     def upload_images(self, image_url: str, category: str, brand: str, sku: str) -> dict[str, str]:
