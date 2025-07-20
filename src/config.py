@@ -1,9 +1,11 @@
 import os
 
 from dotenv import load_dotenv
+
 from utils.logger import Logger
 
 load_dotenv()
+
 
 def get_env(key: str) -> str:
     """Obtener valor de la variable de entorno"""
@@ -12,6 +14,7 @@ def get_env(key: str) -> str:
         Logger.critical("ENV_KEY", "No environment variable found for: " + key)
         # exit(1)
     return env
+
 
 # Set up the APP Environment
 # DEV | PROD
