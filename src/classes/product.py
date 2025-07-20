@@ -1,7 +1,7 @@
 
 class Product:
-    def __init__(self, type: str, website: str) -> None:
-        self.type = type
+    def __init__(self, class_type: str, website: str) -> None:
+        self.class_type = class_type # NEW | UPDATE
         self.website = website
         self.url: str | None = None
         self.sku: str | None = None
@@ -19,7 +19,7 @@ class Product:
     
     def __str__(self) -> str:
         return f"""
-        Product: {self.type}
+        Product: {self.class_type}
         Website: {self.website}
         URL: {self.url}
         SKU: {self.sku}
