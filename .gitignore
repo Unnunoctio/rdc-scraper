@@ -2,9 +2,17 @@
 deprecated
 dockerfile
 inspiration
+CLAUDE.md
+
+# AWS SAM build artifacts
+.aws-sam/
+
+# Secrets (samconfig has real values)
+# samconfig.toml
 
 # Folders
 .vscode
+.claude
 
 # Created by https://www.toptal.com/developers/gitignore/api/python
 # Edit at https://www.toptal.com/developers/gitignore?templates=python
