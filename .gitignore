@@ -3,12 +3,18 @@ deprecated
 dockerfile
 inspiration
 CLAUDE.md
+scripts/
+
+# Python environment
+.python-version
+pyproject.toml
+uv.lock
 
 # AWS SAM build artifacts
 .aws-sam/
 
 # Secrets (samconfig has real values)
-# samconfig.toml
+samconfig.toml
 
 # Folders
 .vscode

@@ -3,9 +3,25 @@ Transform: AWS::Serverless-2016-10-31
 Description: RDC Scraper - Beverage price scraper for Chilean e-commerce sites
 
 Parameters:
+  MongoDbUri:
+    Type: String
+    Description: MongoDB connection string
+    NoEcho: true
+
+  MongoDbDatabase:
+    Type: String
+    Description: MongoDB database name (e.g. dev or prod)
+
+  S3ImagesBucket:
+    Type: String
+    Description: S3 bucket name for product images
+    Default: rincon-del-curao
+
+  # -- Unused until spider integration --
   DrinksApiUrl:
     Type: String
     Description: RDC Drinks API base URL
+    Default: ""
 
   DrinksApiKey:
     Type: String
@@ -22,22 +38,20 @@ Parameters:
     Description: Proxy API key
     Default: ""
 
-  S3ImagesBucket:
-    Type: String
-    Description: S3 bucket name for product images
-    Default: rincon-del-curao
-
   ResendApiKey:
     Type: String
     Description: Resend API key for email notifications
+    Default: ""
 
   EmailSender:
     Type: String
     Description: Sender email address (must be verified in Resend)
+    Default: ""
 
   EmailRecipient:
     Type: String
     Description: Recipient email for unmatched products report
+    Default: ""
 
 Resources:
   ########################################
@@ -73,6 +87,30 @@ Resources:
         RestrictPublicBuckets: false
 
   ########################################
+  # PIPELINE LAMBDAS
+  ########################################
+
+  PipelineLoadConfigsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: RDCScraper-PipelineLoadConfigsFunction
+      CodeUri: src/core/pipeline/load_configs
+      Handler: handler.handler
+      Runtime: python3.14
+      Architectures:
+        - arm64
+      Timeout: 30
+      MemorySize: 256
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref SpiderConfigsTable
+      Environment:
+        Variables:
+          CONFIG_TABLE: !Ref SpiderConfigsTable
+          MONGODB_URI: !Ref MongoDbUri
+          MONGODB_DB: !Ref MongoDbDatabase
+
+  ########################################
   # SHARED LAMBDA LAYER
   ########################################
 
@@ -86,8 +124,6 @@ Resources:
         - python3.14
       CompatibleArchitectures:
         - arm64
-    Metadata:
-      BuildMethod: python3.14
 
   ########################################
   # SPIDER LAMBDAS
@@ -106,33 +142,17 @@ Resources:
         - !Ref SharedUtilsLayer
       Timeout: 300
       MemorySize: 1024
-
-  ########################################
-  # PIPELINE LAMBDAS
-  ########################################
-
-  PipelineLoadConfigsFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: RDCScraper-PipelineLoadConfigsFunction
-      CodeUri: src/core/pipeline/load_configs
-      Handler: handler.handler
-      Runtime: python3.14
-      Architectures:
-        - arm64
-      Timeout: 10
-      MemorySize: 256
       Policies:
-        - DynamoDBReadPolicy:
-            TableName: !Ref SpiderConfigsTable
+        - S3WritePolicy:
+            BucketName: !Ref S3ImagesBucket
       Environment:
         Variables:
-          CONFIG_TABLE: !Ref SpiderConfigsTable
+          S3_PIPELINE_BUCKET: !Ref S3ImagesBucket
 
   PipelineMergeResultsFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: RDCScraper-PipelineMergeResults
+      FunctionName: RDCScraper-PipelineMergeResultsFunction
       CodeUri: src/core/pipeline/merge_results
       Handler: handler.handler
       Runtime: python3.14
@@ -140,45 +160,99 @@ Resources:
         - arm64
       Timeout: 30
       MemorySize: 512
-
-  PipelineSyncWithApiFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: RDCScraper-PipelineSyncWithApi
-      CodeUri: src/core/pipeline/sync_with_api
-      Handler: handler.handler
-      Runtime: python3.12
-      Architectures:
-        - arm64
-      Layers:
-        - !Ref SharedUtilsLayer
-      Timeout: 300
-      MemorySize: 1024
       Policies:
-        - S3WritePolicy:
+        - S3CrudPolicy:
             BucketName: !Ref S3ImagesBucket
       Environment:
         Variables:
-          DRINKS_API_URL: !Ref DrinksApiUrl
-          DRINKS_API_KEY: !Ref DrinksApiKey
-          S3_IMAGES_BUCKET: !Ref S3ImagesBucket
+          S3_PIPELINE_BUCKET: !Ref S3ImagesBucket
 
-  PipelineSendReportFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: RDCScraper-PipelineSendReport
-      CodeUri: src/core/pipeline/send_report
-      Handler: handler.handler
-      Runtime: python3.12
-      Architectures:
-        - arm64
-      Timeout: 30
-      MemorySize: 256
-      Environment:
-        Variables:
-          RESEND_API_KEY: !Ref ResendApiKey
-          EMAIL_SENDER: !Ref EmailSender
-          EMAIL_RECIPIENT: !Ref EmailRecipient
+  # -- Commented until integrated --
+
+  # PipelineFindByPathFunction:
+  #   Type: AWS::Serverless::Function
+  #   Properties:
+  #     FunctionName: RDCScraper-PipelineFindByPath
+  #     CodeUri: src/core/pipeline/find_by_path
+  #     Handler: handler.handler
+  #     Runtime: python3.14
+  #     Architectures:
+  #       - arm64
+  #     Timeout: 300
+  #     MemorySize: 512
+  #     Environment:
+  #       Variables:
+  #         MONGODB_URI: !Ref MongoDbUri
+  #         MONGODB_DB: !Ref MongoDbDatabase
+
+  # PipelineSearchDrinksFunction:
+  #   Type: AWS::Serverless::Function
+  #   Properties:
+  #     FunctionName: RDCScraper-PipelineSearchDrinks
+  #     CodeUri: src/core/pipeline/search_drinks
+  #     Handler: handler.handler
+  #     Runtime: python3.14
+  #     Architectures:
+  #       - arm64
+  #     Timeout: 300
+  #     MemorySize: 512
+  #     Environment:
+  #       Variables:
+  #         DRINKS_API_URL: !Ref DrinksApiUrl
+  #         DRINKS_API_KEY: !Ref DrinksApiKey
+
+  # PipelineSyncProductFunction:
+  #   Type: AWS::Serverless::Function
+  #   Properties:
+  #     FunctionName: RDCScraper-PipelineSyncProduct
+  #     CodeUri: src/core/pipeline/sync_product
+  #     Handler: handler.handler
+  #     Runtime: python3.14
+  #     Architectures:
+  #       - arm64
+  #     Timeout: 300
+  #     MemorySize: 1024
+  #     Policies:
+  #       - S3WritePolicy:
+  #           BucketName: !Ref S3ImagesBucket
+  #     Environment:
+  #       Variables:
+  #         MONGODB_URI: !Ref MongoDbUri
+  #         MONGODB_DB: !Ref MongoDbDatabase
+  #         S3_IMAGES_BUCKET: !Ref S3ImagesBucket
+
+  # PipelineMarkOutOfStockFunction:
+  #   Type: AWS::Serverless::Function
+  #   Properties:
+  #     FunctionName: RDCScraper-PipelineMarkOutOfStock
+  #     CodeUri: src/core/pipeline/mark_out_of_stock
+  #     Handler: handler.handler
+  #     Runtime: python3.14
+  #     Architectures:
+  #       - arm64
+  #     Timeout: 60
+  #     MemorySize: 256
+  #     Environment:
+  #       Variables:
+  #         MONGODB_URI: !Ref MongoDbUri
+  #         MONGODB_DB: !Ref MongoDbDatabase
+
+  # PipelineSendReportFunction:
+  #   Type: AWS::Serverless::Function
+  #   Properties:
+  #     FunctionName: RDCScraper-PipelineSendReport
+  #     CodeUri: src/core/pipeline/send_report
+  #     Handler: handler.handler
+  #     Runtime: python3.12
+  #     Architectures:
+  #       - arm64
+  #     Timeout: 30
+  #     MemorySize: 256
+  #     Environment:
+  #       Variables:
+  #         RESEND_API_KEY: !Ref ResendApiKey
+  #         EMAIL_SENDER: !Ref EmailSender
+  #         EMAIL_RECIPIENT: !Ref EmailRecipient
 
   ########################################
   # STEP FUNCTIONS ORCHESTRATOR
@@ -189,7 +263,7 @@ Resources:
     Properties:
       Name: RDCScraper-Orchestrator
       Definition:
-        Comment: "load_configs -> scrape_parallel -> merge_results -> sync_with_api -> send_report"
+        Comment: "WIP: load_configs -> scrape_parallel -> merge_results"
         StartAt: LoadConfigs
         TimeoutSeconds: 900
         States:
@@ -217,6 +291,7 @@ Resources:
                     FunctionName.$: $.lambda_name
                     Payload:
                       config.$: $.config
+                      execution_id.$: $$.Execution.Name
                   End: true
             Next: MergeResults
 
@@ -227,55 +302,81 @@ Resources:
             Parameters:
               FunctionName: !Ref PipelineMergeResultsFunction
               Payload:
-                products.$: $
-            Next: SyncWithApiParallel
+                s3_keys.$: $
+                execution_id.$: $$.Execution.Name
+            End: true
 
-          SyncWithApiParallel:
-            Type: Map
-            ItemsPath: $.batches
-            MaxConcurrency: 10
-            Iterator:
-              StartAt: InvokeSyncWithApi
-              States:
-                InvokeSyncWithApi:
-                  Type: Task
-                  Resource: arn:aws:states:::lambda:invoke
-                  OutputPath: $.Payload
-                  Parameters:
-                    FunctionName: !Ref PipelineSyncWithApiFunction
-                    Payload.$: $
-                  End: true
-            Next: SendReport
+          # -- Next states (commented until integrated) --
 
-          SendReport:
-            Type: Task
-            Resource: arn:aws:states:::lambda:invoke
-            Parameters:
-              FunctionName: !Ref PipelineSendReportFunction
-              Payload:
-                results.$: $
-            Next: EndExecution
+          # MergeResults:
+          #   Type: Task
+          #   Resource: arn:aws:states:::lambda:invoke
+          #   OutputPath: $.Payload
+          #   Parameters:
+          #     FunctionName: !Ref PipelineMergeResultsFunction
+          #     Payload:
+          #       products.$: $.spider_results
+          #   Next: SyncPipeline
 
-          EndExecution:
-            Type: Succeed
+          # SyncPipeline:
+          #   Type: Map
+          #   ItemsPath: $.batches
+          #   MaxConcurrency: 10
+          #   ResultPath: $.sync_results
+          #   Iterator:
+          #     StartAt: FindByPath
+          #     States:
+          #       FindByPath:
+          #         Type: Task
+          #         Resource: arn:aws:states:::lambda:invoke
+          #         OutputPath: $.Payload
+          #         Parameters:
+          #           FunctionName: !Ref PipelineFindByPathFunction
+          #           Payload:
+          #             products.$: $.products
+          #             sync_token.$: $$.Execution.StartTime
+          #         Next: SearchDrinks
+          #       SearchDrinks:
+          #         Type: Task
+          #         Resource: arn:aws:states:::lambda:invoke
+          #         OutputPath: $.Payload
+          #         Parameters:
+          #           FunctionName: !Ref PipelineSearchDrinksFunction
+          #           Payload.$: $
+          #         Next: SyncProduct
+          #       SyncProduct:
+          #         Type: Task
+          #         Resource: arn:aws:states:::lambda:invoke
+          #         OutputPath: $.Payload
+          #         Parameters:
+          #           FunctionName: !Ref PipelineSyncProductFunction
+          #           Payload.$: $
+          #         End: true
+          #   Next: MarkOutOfStock
+
+          # MarkOutOfStock:
+          #   Type: Task
+          #   Resource: arn:aws:states:::lambda:invoke
+          #   ResultPath: null
+          #   Parameters:
+          #     FunctionName: !Ref PipelineMarkOutOfStockFunction
+          #     Payload:
+          #       sync_token.$: $$.Execution.StartTime
+          #   Next: SendReport
+
+          # SendReport:
+          #   Type: Task
+          #   Resource: arn:aws:states:::lambda:invoke
+          #   Parameters:
+          #     FunctionName: !Ref PipelineSendReportFunction
+          #     Payload:
+          #       results.$: $.sync_results
+          #   Next: EndExecution
+
+          # EndExecution:
+          #   Type: Succeed
 
       Role: !GetAtt RDCScraperOrchestratorRole.Arn
-
-  ########################################
-  # EVENTBRIDGE SCHEDULE
-  ########################################
-
-  RDCScraperScheduleRule:
-    Type: AWS::Events::Rule
-    Properties:
-      Name: RDCScraper-ScheduleTrigger
-      Description: Daily scraping trigger for RDC pipeline
-      ScheduleExpression: cron(0 10,18 * * ? *)
-      State: ENABLED
-      Targets:
-        - Arn: !Ref RDCScraperOrchestrator
-          RoleArn: !GetAtt RDCScraperEventBridgeRole.Arn
-          Id: RDCScraper-OrchestratorTarget
 
   ########################################
   # IAM ROLES
@@ -301,22 +402,36 @@ Resources:
                   - lambda:InvokeFunction
                 Resource: "*"
 
-  RDCScraperEventBridgeRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: events.amazonaws.com
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: StartStepFunctionPolicy
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - states:StartExecution
-                Resource: !Ref RDCScraperOrchestrator
+  # -- Commented until schedule integration --
+
+  # RDCScraperScheduleRule:
+  #   Type: AWS::Events::Rule
+  #   Properties:
+  #     Name: RDCScraper-ScheduleTrigger
+  #     Description: Daily scraping trigger for RDC pipeline
+  #     ScheduleExpression: cron(0 10,18 * * ? *)
+  #     State: ENABLED
+  #     Targets:
+  #       - Arn: !Ref RDCScraperOrchestrator
+  #         RoleArn: !GetAtt RDCScraperEventBridgeRole.Arn
+  #         Id: RDCScraper-OrchestratorTarget
+
+  # RDCScraperEventBridgeRole:
+  #   Type: AWS::IAM::Role
+  #   Properties:
+  #     AssumeRolePolicyDocument:
+  #       Version: "2012-10-17"
+  #       Statement:
+  #         - Effect: Allow
+  #           Principal:
+  #             Service: events.amazonaws.com
+  #           Action: sts:AssumeRole
+  #     Policies:
+  #       - PolicyName: StartStepFunctionPolicy
+  #         PolicyDocument:
+  #           Version: "2012-10-17"
+  #           Statement:
+  #             - Effect: Allow
+  #               Action:
+  #                 - states:StartExecution
+  #               Resource: !Ref RDCScraperOrchestrator
