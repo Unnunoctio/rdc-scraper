@@ -1,8 +1,14 @@
 [
     {
         "spider_id": "jumbo",
-        "lambda_name": "RDCScraper-SpiderJumbo",
+        "lambda_name": "RDCScraper-SpiderJumboFunction",
         "enabled": true,
+        "info": {
+            "code": "jumbo",
+            "name": "Jumbo",
+            "logo": "https://assets.jumbo.cl/favicon/favicon-192.png",
+            "url": "https://www.jumbo.cl/"
+        },
         "config": {
             "source": "jumbo",
             "product_list_url": "https://bff.jumbo.cl/catalog/plp",
