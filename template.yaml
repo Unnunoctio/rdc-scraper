@@ -167,23 +167,25 @@ Resources:
         Variables:
           S3_PIPELINE_BUCKET: !Ref S3ImagesBucket
 
-  # -- Commented until integrated --
-
-  # PipelineFindByPathFunction:
-  #   Type: AWS::Serverless::Function
-  #   Properties:
-  #     FunctionName: RDCScraper-PipelineFindByPath
-  #     CodeUri: src/core/pipeline/find_by_path
-  #     Handler: handler.handler
-  #     Runtime: python3.14
-  #     Architectures:
-  #       - arm64
-  #     Timeout: 300
-  #     MemorySize: 512
-  #     Environment:
-  #       Variables:
-  #         MONGODB_URI: !Ref MongoDbUri
-  #         MONGODB_DB: !Ref MongoDbDatabase
+  PipelineFindByPathFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: RDCScraper-PipelineFindByPathFunction
+      CodeUri: src/core/pipeline/find_by_path
+      Handler: handler.handler
+      Runtime: python3.14
+      Architectures:
+        - arm64
+      Timeout: 300
+      MemorySize: 512
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref S3ImagesBucket
+      Environment:
+        Variables:
+          MONGODB_URI: !Ref MongoDbUri
+          MONGODB_DB: !Ref MongoDbDatabase
+          S3_PIPELINE_BUCKET: !Ref S3ImagesBucket
 
   # PipelineSearchDrinksFunction:
   #   Type: AWS::Serverless::Function
@@ -263,7 +265,7 @@ Resources:
     Properties:
       Name: RDCScraper-Orchestrator
       Definition:
-        Comment: "WIP: load_configs -> scrape_parallel -> merge_results"
+        Comment: "WIP: load_configs -> scrape_parallel -> merge_results -> sync_pipeline[find_by_path]"
         StartAt: LoadConfigs
         TimeoutSeconds: 900
         States:
@@ -304,77 +306,29 @@ Resources:
               Payload:
                 s3_keys.$: $
                 execution_id.$: $$.Execution.Name
+            Next: SyncPipeline
+
+          SyncPipeline:
+            Type: Map
+            ItemsPath: $
+            MaxConcurrency: 10
+            Iterator:
+              StartAt: FindByPath
+              States:
+                FindByPath:
+                  Type: Task
+                  Resource: arn:aws:states:::lambda:invoke
+                  OutputPath: $.Payload
+                  Parameters:
+                    FunctionName: !Ref PipelineFindByPathFunction
+                    Payload:
+                      s3_key.$: $.s3_key
+                      category.$: $.category
+                      sync_token.$: $$.Execution.StartTime
+                  End: true
             End: true
 
-          # -- Next states (commented until integrated) --
-
-          # MergeResults:
-          #   Type: Task
-          #   Resource: arn:aws:states:::lambda:invoke
-          #   OutputPath: $.Payload
-          #   Parameters:
-          #     FunctionName: !Ref PipelineMergeResultsFunction
-          #     Payload:
-          #       products.$: $.spider_results
-          #   Next: SyncPipeline
-
-          # SyncPipeline:
-          #   Type: Map
-          #   ItemsPath: $.batches
-          #   MaxConcurrency: 10
-          #   ResultPath: $.sync_results
-          #   Iterator:
-          #     StartAt: FindByPath
-          #     States:
-          #       FindByPath:
-          #         Type: Task
-          #         Resource: arn:aws:states:::lambda:invoke
-          #         OutputPath: $.Payload
-          #         Parameters:
-          #           FunctionName: !Ref PipelineFindByPathFunction
-          #           Payload:
-          #             products.$: $.products
-          #             sync_token.$: $$.Execution.StartTime
-          #         Next: SearchDrinks
-          #       SearchDrinks:
-          #         Type: Task
-          #         Resource: arn:aws:states:::lambda:invoke
-          #         OutputPath: $.Payload
-          #         Parameters:
-          #           FunctionName: !Ref PipelineSearchDrinksFunction
-          #           Payload.$: $
-          #         Next: SyncProduct
-          #       SyncProduct:
-          #         Type: Task
-          #         Resource: arn:aws:states:::lambda:invoke
-          #         OutputPath: $.Payload
-          #         Parameters:
-          #           FunctionName: !Ref PipelineSyncProductFunction
-          #           Payload.$: $
-          #         End: true
-          #   Next: MarkOutOfStock
-
-          # MarkOutOfStock:
-          #   Type: Task
-          #   Resource: arn:aws:states:::lambda:invoke
-          #   ResultPath: null
-          #   Parameters:
-          #     FunctionName: !Ref PipelineMarkOutOfStockFunction
-          #     Payload:
-          #       sync_token.$: $$.Execution.StartTime
-          #   Next: SendReport
-
-          # SendReport:
-          #   Type: Task
-          #   Resource: arn:aws:states:::lambda:invoke
-          #   Parameters:
-          #     FunctionName: !Ref PipelineSendReportFunction
-          #     Payload:
-          #       results.$: $.sync_results
-          #   Next: EndExecution
-
-          # EndExecution:
-          #   Type: Succeed
+          # -- SearchDrinks, SyncProduct, MarkOutOfStock, SendReport -- commented until integrated
 
       Role: !GetAtt RDCScraperOrchestratorRole.Arn
 
