@@ -187,21 +187,21 @@ Resources:
           MONGODB_DB: !Ref MongoDbDatabase
           S3_PIPELINE_BUCKET: !Ref S3ImagesBucket
 
-  # PipelineSearchDrinksFunction:
-  #   Type: AWS::Serverless::Function
-  #   Properties:
-  #     FunctionName: RDCScraper-PipelineSearchDrinks
-  #     CodeUri: src/core/pipeline/search_drinks
-  #     Handler: handler.handler
-  #     Runtime: python3.14
-  #     Architectures:
-  #       - arm64
-  #     Timeout: 300
-  #     MemorySize: 512
-  #     Environment:
-  #       Variables:
-  #         DRINKS_API_URL: !Ref DrinksApiUrl
-  #         DRINKS_API_KEY: !Ref DrinksApiKey
+  PipelineSearchDrinksFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: RDCScraper-PipelineSearchDrinksFunction
+      CodeUri: src/core/pipeline/search_drinks
+      Handler: handler.handler
+      Runtime: python3.14
+      Architectures:
+        - arm64
+      Timeout: 300
+      MemorySize: 512
+      Environment:
+        Variables:
+          DRINKS_API_URL: !Ref DrinksApiUrl
+          DRINKS_API_KEY: !Ref DrinksApiKey
 
   # PipelineSyncProductFunction:
   #   Type: AWS::Serverless::Function
@@ -265,7 +265,7 @@ Resources:
     Properties:
       Name: RDCScraper-Orchestrator
       Definition:
-        Comment: "WIP: load_configs -> scrape_parallel -> merge_results -> sync_pipeline[find_by_path]"
+        Comment: "WIP: load_configs -> scrape_parallel -> merge_results -> sync_pipeline[find_by_path -> search_drinks]"
         StartAt: LoadConfigs
         TimeoutSeconds: 900
         States:
@@ -325,10 +325,19 @@ Resources:
                       s3_key.$: $.s3_key
                       category.$: $.category
                       sync_token.$: $$.Execution.StartTime
+                  Next: SearchDrinks
+                  
+                SearchDrinks:
+                  Type: Task
+                  Resource: arn:aws:states:::lambda:invoke
+                  OutputPath: $.Payload
+                  Parameters:
+                    FunctionName: !Ref PipelineSearchDrinksFunction
+                    Payload.$: $
                   End: true
             End: true
 
-          # -- SearchDrinks, SyncProduct, MarkOutOfStock, SendReport -- commented until integrated
+          # -- SyncProduct, MarkOutOfStock, SendReport -- commented until integrated
 
       Role: !GetAtt RDCScraperOrchestratorRole.Arn
 

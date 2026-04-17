@@ -194,15 +194,25 @@ def _spec_value(specs: list[dict], *keys: str) -> Optional[str]:
 
 
 def _extract_abv(specs: list[dict], name: str) -> Optional[float]:
-    raw = _spec_value(specs, "Graduacion Alcoholica", "Grado")
+    # 1. Spec "Graduacion Alcoholica" — valor numérico preciso (e.g. "4.5°")
+    raw = _spec_value(specs, "Graduacion Alcoholica")
     if raw:
         match = re.search(r"(\d+(?:\.\d+)?)", raw)
         if match:
             return float(match.group(1))
 
+    # 2. Nombre del producto — buscar patrón "4.5°"
     match = re.search(r"(\d+(?:\.\d+)?)°", name)
     if match:
         return float(match.group(1))
+
+    # 3. Spec "Grado" como último recurso — solo aceptar si el valor es un número
+    #    seguido de ° o % (e.g. "4.5°"), descartando categorías como "Bajo (<5%ABV)"
+    raw = _spec_value(specs, "Grado")
+    if raw:
+        match = re.search(r"(?<![<>])(\d+(?:\.\d+)?)[°%]", raw)
+        if match:
+            return float(match.group(1))
 
     return None
 
