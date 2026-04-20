@@ -31,7 +31,7 @@ products
             "quantity": int         (units per pack, 1 if individual),
             "category": str         ("beers" | "spirits" | "wines"),
             "drink": {
-                "id":               str,
+                "id":               str,   (same id can appear at different volumes/packaging — see unique_drink_variant index)
                 "name":             str,
                 "brand":            str,
                 "abv":              float,
@@ -104,9 +104,27 @@ def init(uri: str, db_name: str) -> None:
     # ── products ─────────────────────────────────────────────────────────────
     print("\n[products]")
 
-    # Each product maps to exactly one drink
-    db.products.create_index("drink.id", unique=True, name="unique_drink_id")
-    print("  ✓ unique_drink_id")
+    # Drop legacy single-field index if it still exists (replaced by unique_drink_variant)
+    try:
+        db.products.drop_index("unique_drink_id")
+        print("  ✓ dropped legacy unique_drink_id")
+    except Exception:
+        pass
+
+    # A drink variant is uniquely identified by (drink.id, volume, packaging, quantity).
+    # The same drink.id can appear at different volumes (750ml vs 1000ml) or packaging
+    # (Bottle vs Can), each of which is a distinct physical product.
+    db.products.create_index(
+        [
+            ("drink.id", ASCENDING),
+            ("drink.volume", ASCENDING),
+            ("drink.packaging", ASCENDING),
+            ("quantity", ASCENDING),
+        ],
+        unique=True,
+        name="unique_drink_variant",
+    )
+    print("  ✓ unique_drink_variant")
 
     # SKU is a public-facing unique identifier
     db.products.create_index("sku", unique=True, name="unique_sku")

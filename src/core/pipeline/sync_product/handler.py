@@ -3,7 +3,7 @@ import asyncio
 import aiohttp
 import db
 from image_uploader import upload_image
-from utils import CATEGORY_MAP
+from utils import CATEGORY_MAP, PACKAGING_MAP_ES
 
 
 def handler(event, context):
@@ -43,9 +43,12 @@ async def _sync_all(matched: list[dict], sync_token: str) -> tuple[int, int, lis
 
 async def _sync_one(database, session: aiohttp.ClientSession, product: dict, drink: dict, sync_token: str) -> tuple:
     try:
+        packaging_es = PACKAGING_MAP_ES.get(drink.get("packaging", ""), drink.get("packaging", ""))
         existing = await database.products.find_one(
             {
                 "drink.id": drink["id"],
+                "drink.volume": drink["volume"],
+                "drink.packaging": packaging_es,
                 "quantity": product.get("quantity", 1),
             }
         )
