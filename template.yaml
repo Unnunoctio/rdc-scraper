@@ -86,6 +86,18 @@ Resources:
         IgnorePublicAcls: false
         RestrictPublicBuckets: false
 
+  ProductImagesBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ProductImagesBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action: s3:GetObject
+            Resource: !Sub "arn:aws:s3:::${S3ImagesBucket}/images/*"
+
   ########################################
   # PIPELINE LAMBDAS
   ########################################
@@ -203,25 +215,25 @@ Resources:
           DRINKS_API_URL: !Ref DrinksApiUrl
           DRINKS_API_KEY: !Ref DrinksApiKey
 
-  # PipelineSyncProductFunction:
-  #   Type: AWS::Serverless::Function
-  #   Properties:
-  #     FunctionName: RDCScraper-PipelineSyncProduct
-  #     CodeUri: src/core/pipeline/sync_product
-  #     Handler: handler.handler
-  #     Runtime: python3.14
-  #     Architectures:
-  #       - arm64
-  #     Timeout: 300
-  #     MemorySize: 1024
-  #     Policies:
-  #       - S3WritePolicy:
-  #           BucketName: !Ref S3ImagesBucket
-  #     Environment:
-  #       Variables:
-  #         MONGODB_URI: !Ref MongoDbUri
-  #         MONGODB_DB: !Ref MongoDbDatabase
-  #         S3_IMAGES_BUCKET: !Ref S3ImagesBucket
+  PipelineSyncProductFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: RDCScraper-PipelineSyncProductFunction
+      CodeUri: src/core/pipeline/sync_product
+      Handler: handler.handler
+      Runtime: python3.14
+      Architectures:
+        - arm64
+      Timeout: 300
+      MemorySize: 1024
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref S3ImagesBucket
+      Environment:
+        Variables:
+          MONGODB_URI: !Ref MongoDbUri
+          MONGODB_DB: !Ref MongoDbDatabase
+          S3_IMAGES_BUCKET: !Ref S3ImagesBucket
 
   # PipelineMarkOutOfStockFunction:
   #   Type: AWS::Serverless::Function
@@ -265,7 +277,7 @@ Resources:
     Properties:
       Name: RDCScraper-Orchestrator
       Definition:
-        Comment: "WIP: load_configs -> scrape_parallel -> merge_results -> sync_pipeline[find_by_path -> search_drinks]"
+        Comment: "WIP: load_configs -> scrape_parallel -> merge_results -> sync_pipeline[find_by_path -> search_drinks -> sync_product]"
         StartAt: LoadConfigs
         TimeoutSeconds: 900
         States:
@@ -326,7 +338,7 @@ Resources:
                       category.$: $.category
                       sync_token.$: $$.Execution.StartTime
                   Next: SearchDrinks
-                  
+
                 SearchDrinks:
                   Type: Task
                   Resource: arn:aws:states:::lambda:invoke
@@ -334,10 +346,19 @@ Resources:
                   Parameters:
                     FunctionName: !Ref PipelineSearchDrinksFunction
                     Payload.$: $
+                  Next: SyncProduct
+
+                SyncProduct:
+                  Type: Task
+                  Resource: arn:aws:states:::lambda:invoke
+                  OutputPath: $.Payload
+                  Parameters:
+                    FunctionName: !Ref PipelineSyncProductFunction
+                    Payload.$: $
                   End: true
             End: true
 
-          # -- SyncProduct, MarkOutOfStock, SendReport -- commented until integrated
+          # -- MarkOutOfStock, SendReport -- commented until integrated
 
       Role: !GetAtt RDCScraperOrchestratorRole.Arn
 

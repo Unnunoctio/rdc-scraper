@@ -4,109 +4,127 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from pymongo import AsyncMongoClient
-
-from utils import CATEGORY_MAP, OPTIONAL_DRINK_FIELDS, generate_sku
+from utils import PACKAGING_MAP_ES, SPIRIT_TYPE_MAP_ES, generate_product_name, generate_product_slug, generate_sku
 
 MONGODB_URI = os.environ["MONGODB_URI"]
 MONGODB_DB = os.environ["MONGODB_DB"]
 
 _loop = asyncio.new_event_loop()
 asyncio.set_event_loop(_loop)
-
-_mongo_client = AsyncMongoClient(MONGODB_URI)
-_info_cache: dict[str, str] = {}
+_client = AsyncMongoClient(MONGODB_URI)
+_info_cache: dict[str, object] = {}
 
 
 def run(coro):
-    """Run a coroutine on the persistent event loop."""
     return _loop.run_until_complete(coro)
 
 
 def get_db():
-    return _mongo_client[MONGODB_DB]
+    return _client[MONGODB_DB]
 
 
-def get_info_id(source: str) -> Optional[str]:
+def get_info_id(source: str) -> Optional[object]:
     return _info_cache.get(source)
 
 
-async def load_info_cache(db):
-    """Load Info documents keyed by code. No-op if already populated (container reuse)."""
+async def load_info_cache(database):
+    """Load Info documents keyed by source code. No-op on container reuse."""
     if _info_cache:
         return
-    async for doc in db.infos.find({}, {"_id": 1, "code": 1}):
+    async for doc in database.infos.find({}, {"_id": 1, "code": 1}):
         _info_cache[doc["code"]] = doc["_id"]
     print(f"[DB] Info cache loaded: {list(_info_cache.keys())}")
 
 
-async def add_website(db, product_id: str, scraped: dict, sync_token: str):
-    info_id = get_info_id(scraped.get("source", ""))
+async def unique_sku(database) -> str:
+    """Generate a SKU guaranteed not to exist in the products collection."""
+    while True:
+        sku = generate_sku()
+        if not await database.products.find_one({"sku": sku}, {"_id": 1}):
+            return sku
 
-    await db.products.update_one(
+
+async def add_website(database, product_id: object, scraped: dict, sync_token: str):
+    info_id = get_info_id(scraped.get("source", ""))
+    url = scraped["url"]
+
+    await database.products.update_one(
         {"_id": product_id},
-        {"$push": {"websites": {
-            "info": info_id,
-            "path": scraped["url"],
-            "price": scraped["price"],
-            "bestPrice": scraped["best_price"],
-            "lastUpdate": sync_token,
-            "inStock": True,
-        }}},
+        {
+            "$push": {
+                "websites": {
+                    "info": info_id,
+                    "path": url,
+                    "price": scraped["price"],
+                    "bestPrice": scraped["best_price"],
+                    "lastUpdate": sync_token,
+                    "inStock": True,
+                }
+            }
+        },
     )
-    await _upsert_today_price_log(db, product_id, scraped["url"], scraped["price"], scraped["best_price"])
+    await _upsert_today_price_log(database, product_id, url, scraped["price"], scraped["best_price"])
 
 
-async def create_product(db, drink: dict, scraped: dict, image_url: Optional[str], sync_token: str):
+async def create_product(database, drink: dict, scraped: dict, image_url: Optional[str], sync_token: str, sku: str):
     info_id = get_info_id(scraped.get("source", ""))
-    category = CATEGORY_MAP.get(scraped.get("category", ""), "")
+    url = scraped["url"]
+    quantity = scraped.get("quantity", 1)
+    category = scraped.get("category", "")
 
-    drink_doc = {
-        "id": drink["id"],
-        "name": drink["name"],
-        "brand": drink["brand"],
-        "abv": drink["abv"],
-        "packaging": drink["packaging"],
-        "volume": drink["volume"],
-        "country": drink["country"],
-        **{k: drink[k] for k in OPTIONAL_DRINK_FIELDS if drink.get(k) is not None},
-    }
+    name = generate_product_name(drink=drink, category=category, quantity=quantity)
+    slug = generate_product_slug(sku=sku, name=name, volume_ml=drink["volume"])
 
-    result = await db.products.insert_one({
-        "sku": generate_sku(),
-        "quantity": scraped.get("quantity", 1),
-        "category": category,
-        "drink": drink_doc,
-        "images": [image_url] if image_url else [],
-        "websites": [{
-            "info": info_id,
-            "path": scraped["url"],
-            "price": scraped["price"],
-            "bestPrice": scraped["best_price"],
-            "lastUpdate": sync_token,
-            "inStock": True,
-        }],
-    })
-    await _upsert_today_price_log(db, result.inserted_id, scraped["url"], scraped["price"], scraped["best_price"])
+    result = await database.products.insert_one(
+        {
+            "sku": sku,
+            "name": name,
+            "slug": slug,
+            "quantity": quantity,
+            "category": category,
+            "drink": {
+                **drink,
+                "packaging": PACKAGING_MAP_ES.get(drink.get("packaging", ""), drink.get("packaging", "")),
+                **({"type": SPIRIT_TYPE_MAP_ES.get(drink["type"], drink["type"])} if drink.get("type") else {}),
+            },
+            "images": [image_url] if image_url else [],
+            "websites": [
+                {
+                    "info": info_id,
+                    "path": url,
+                    "price": scraped["price"],
+                    "bestPrice": scraped["best_price"],
+                    "lastUpdate": sync_token,
+                    "inStock": True,
+                }
+            ],
+        }
+    )
+    await _upsert_today_price_log(database, result.inserted_id, url, scraped["price"], scraped["best_price"])
 
 
-async def _upsert_today_price_log(db, product_id, website_path: str, price: int, best_price: int) -> None:
+async def _upsert_today_price_log(database, product_id, website_path: str, price: int, best_price: int):
     today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
 
-    existing = await db.priceLogs.find_one({
-        "productId": product_id,
-        "websitePath": website_path,
-        "date": today,
-    })
+    existing = await database.priceLogs.find_one(
+        {
+            "productId": product_id,
+            "websitePath": website_path,
+            "date": today,
+        }
+    )
     if existing:
-        await db.priceLogs.update_one(
+        await database.priceLogs.update_one(
             {"_id": existing["_id"]},
             {"$set": {"price": price, "bestPrice": best_price}},
         )
     else:
-        await db.priceLogs.insert_one({
-            "productId": product_id,
-            "websitePath": website_path,
-            "price": price,
-            "bestPrice": best_price,
-            "date": today,
-        })
+        await database.priceLogs.insert_one(
+            {
+                "productId": product_id,
+                "websitePath": website_path,
+                "price": price,
+                "bestPrice": best_price,
+                "date": today,
+            }
+        )
