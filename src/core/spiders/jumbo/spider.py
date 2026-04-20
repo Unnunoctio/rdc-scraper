@@ -140,7 +140,7 @@ class JumboSpider(BaseSpider):
             price = int(item.get("listPrice", 0))
 
             images = item.get("images", [])
-            image_url = images[0] if len(images) > 0 else None
+            image_url = re.sub(r"(/ids/\d+)-\d+-\d+/", r"\1/", images[0]) if images else None
 
             category_names = raw.get("categoryNames", [])
             category = category_names[1] if len(category_names) > 1 else (category_names[0] if category_names else None)
