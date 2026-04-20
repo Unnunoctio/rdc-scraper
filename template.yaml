@@ -235,21 +235,21 @@ Resources:
           MONGODB_DB: !Ref MongoDbDatabase
           S3_IMAGES_BUCKET: !Ref S3ImagesBucket
 
-  # PipelineMarkOutOfStockFunction:
-  #   Type: AWS::Serverless::Function
-  #   Properties:
-  #     FunctionName: RDCScraper-PipelineMarkOutOfStock
-  #     CodeUri: src/core/pipeline/mark_out_of_stock
-  #     Handler: handler.handler
-  #     Runtime: python3.14
-  #     Architectures:
-  #       - arm64
-  #     Timeout: 60
-  #     MemorySize: 256
-  #     Environment:
-  #       Variables:
-  #         MONGODB_URI: !Ref MongoDbUri
-  #         MONGODB_DB: !Ref MongoDbDatabase
+  PipelineMarkOutOfStockFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: RDCScraper-PipelineMarkOutOfStock
+      CodeUri: src/core/pipeline/mark_out_of_stock
+      Handler: handler.handler
+      Runtime: python3.14
+      Architectures:
+        - arm64
+      Timeout: 60
+      MemorySize: 256
+      Environment:
+        Variables:
+          MONGODB_URI: !Ref MongoDbUri
+          MONGODB_DB: !Ref MongoDbDatabase
 
   # PipelineSendReportFunction:
   #   Type: AWS::Serverless::Function
@@ -277,7 +277,7 @@ Resources:
     Properties:
       Name: RDCScraper-Orchestrator
       Definition:
-        Comment: "WIP: load_configs -> scrape_parallel -> merge_results -> sync_pipeline[find_by_path -> search_drinks -> sync_product]"
+        Comment: "load_configs -> scrape_parallel -> merge_results -> sync_pipeline[find_by_path -> search_drinks -> sync_product] -> mark_out_of_stock"
         StartAt: LoadConfigs
         TimeoutSeconds: 900
         States:
@@ -356,9 +356,19 @@ Resources:
                     FunctionName: !Ref PipelineSyncProductFunction
                     Payload.$: $
                   End: true
+            Next: MarkOutOfStock
+
+          MarkOutOfStock:
+            Type: Task
+            Resource: arn:aws:states:::lambda:invoke
+            OutputPath: $.Payload
+            Parameters:
+              FunctionName: !Ref PipelineMarkOutOfStockFunction
+              Payload:
+                sync_token.$: $$.Execution.StartTime
             End: true
 
-          # -- MarkOutOfStock, SendReport -- commented until integrated
+          # -- SendReport -- commented until integrated
 
       Role: !GetAtt RDCScraperOrchestratorRole.Arn
 
