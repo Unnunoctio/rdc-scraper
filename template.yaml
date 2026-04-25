@@ -1,62 +1,49 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
-Description: RDC Scraper - Beverage price scraper for Chilean e-commerce sites
 
 Parameters:
   MongoDbUri:
     Type: String
-    Description: MongoDB connection string
     NoEcho: true
-
   MongoDbDatabase:
     Type: String
-    Description: MongoDB database name (e.g. dev or prod)
-
   S3ImagesBucket:
     Type: String
-    Description: S3 bucket name for product images
     Default: rincon-del-curao
-
-  # -- Unused until spider integration --
   DrinksApiUrl:
     Type: String
-    Description: RDC Drinks API base URL
     Default: ""
-
   DrinksApiKey:
     Type: String
-    Description: RDC Drinks API key
     Default: ""
-
+    NoEcho: true
   ProxyEndpoint:
     Type: String
-    Description: Proxy endpoint for Cloudflare bypass
     Default: ""
-
   ProxyApiKey:
     Type: String
-    Description: Proxy API key
     Default: ""
-
+    NoEcho: true
   ResendApiKey:
     Type: String
-    Description: Resend API key for email notifications
     Default: ""
-
+    NoEcho: true
   EmailSender:
     Type: String
-    Description: Sender email address (must be verified in Resend)
     Default: ""
-
   EmailRecipient:
     Type: String
-    Description: Recipient email for unmatched products report
     Default: ""
 
+Globals:
+  Function:
+    Runtime: nodejs24.x
+    Architectures:
+      - arm64
+
 Resources:
-  ########################################
-  # DYNAMO DB - SPIDER CONFIGURATIONS
-  ########################################
+
+  # ── DynamoDB ──────────────────────────────────────────────────────────────
 
   SpiderConfigsTable:
     Type: AWS::DynamoDB::Table
@@ -72,256 +59,255 @@ Resources:
       SSESpecification:
         SSEEnabled: true
 
-  ########################################
-  # S3 BUCKET - PRODUCT IMAGES
-  ########################################
+  # ── S3 ────────────────────────────────────────────────────────────────────
 
   ProductImagesBucket:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Ref S3ImagesBucket
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: false
-        BlockPublicPolicy: false
-        IgnorePublicAcls: false
-        RestrictPublicBuckets: false
 
   ProductImagesBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
       Bucket: !Ref ProductImagesBucket
       PolicyDocument:
-        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal: "*"
             Action: s3:GetObject
             Resource: !Sub "arn:aws:s3:::${S3ImagesBucket}/images/*"
 
-  ########################################
-  # PIPELINE LAMBDAS
-  ########################################
+  # ── Lambdas ───────────────────────────────────────────────────────────────
 
   PipelineLoadConfigsFunction:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: RDCScraper-PipelineLoadConfigsFunction
-      CodeUri: src/core/pipeline/load_configs
+      CodeUri: src/pipeline/load-configs/
       Handler: handler.handler
-      Runtime: python3.14
-      Architectures:
-        - arm64
-      Timeout: 30
       MemorySize: 256
+      Timeout: 60
+      Environment:
+        Variables:
+          MONGODB_URI: !Ref MongoDbUri
+          MONGODB_DB: !Ref MongoDbDatabase
+          SPIDER_CONFIGS_TABLE: !Ref SpiderConfigsTable
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref SpiderConfigsTable
-      Environment:
-        Variables:
-          CONFIG_TABLE: !Ref SpiderConfigsTable
-          MONGODB_URI: !Ref MongoDbUri
-          MONGODB_DB: !Ref MongoDbDatabase
-
-  ########################################
-  # SHARED LAMBDA LAYER
-  ########################################
-
-  SharedUtilsLayer:
-    Type: AWS::Serverless::LayerVersion
-    Properties:
-      LayerName: RDCScraper-SharedUtilsLayer
-      Description: Shared utilities (BaseSpider, fetchers, ScrapedProduct model)
-      ContentUri: src/shared/
-      CompatibleRuntimes:
-        - python3.14
-      CompatibleArchitectures:
-        - arm64
-
-  ########################################
-  # SPIDER LAMBDAS
-  ########################################
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        EntryPoints:
+          - handler.ts
 
   SpiderJumboFunction:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: RDCScraper-SpiderJumboFunction
-      CodeUri: src/core/spiders/jumbo
+      CodeUri: src/spiders/jumbo/
       Handler: handler.handler
-      Runtime: python3.14
-      Architectures:
-        - arm64
-      Layers:
-        - !Ref SharedUtilsLayer
-      Timeout: 300
       MemorySize: 1024
+      Timeout: 300
+      Environment:
+        Variables:
+          S3_BUCKET: !Ref S3ImagesBucket
       Policies:
         - S3WritePolicy:
             BucketName: !Ref S3ImagesBucket
-      Environment:
-        Variables:
-          S3_PIPELINE_BUCKET: !Ref S3ImagesBucket
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        EntryPoints:
+          - handler.ts
 
   PipelineMergeResultsFunction:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: RDCScraper-PipelineMergeResultsFunction
-      CodeUri: src/core/pipeline/merge_results
+      CodeUri: src/pipeline/merge-results/
       Handler: handler.handler
-      Runtime: python3.14
-      Architectures:
-        - arm64
-      Timeout: 30
       MemorySize: 512
+      Timeout: 120
+      Environment:
+        Variables:
+          S3_BUCKET: !Ref S3ImagesBucket
       Policies:
         - S3CrudPolicy:
             BucketName: !Ref S3ImagesBucket
-      Environment:
-        Variables:
-          S3_PIPELINE_BUCKET: !Ref S3ImagesBucket
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        EntryPoints:
+          - handler.ts
 
   PipelineFindByPathFunction:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: RDCScraper-PipelineFindByPathFunction
-      CodeUri: src/core/pipeline/find_by_path
+      CodeUri: src/pipeline/find-by-path/
       Handler: handler.handler
-      Runtime: python3.14
-      Architectures:
-        - arm64
-      Timeout: 300
       MemorySize: 512
-      Policies:
-        - S3CrudPolicy:
-            BucketName: !Ref S3ImagesBucket
+      Timeout: 300
       Environment:
         Variables:
           MONGODB_URI: !Ref MongoDbUri
           MONGODB_DB: !Ref MongoDbDatabase
-          S3_PIPELINE_BUCKET: !Ref S3ImagesBucket
+          S3_BUCKET: !Ref S3ImagesBucket
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref S3ImagesBucket
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        EntryPoints:
+          - handler.ts
 
   PipelineSearchDrinksFunction:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: RDCScraper-PipelineSearchDrinksFunction
-      CodeUri: src/core/pipeline/search_drinks
+      CodeUri: src/pipeline/search-drinks/
       Handler: handler.handler
-      Runtime: python3.14
-      Architectures:
-        - arm64
-      Timeout: 300
       MemorySize: 512
+      Timeout: 120
       Environment:
         Variables:
           DRINKS_API_URL: !Ref DrinksApiUrl
           DRINKS_API_KEY: !Ref DrinksApiKey
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        EntryPoints:
+          - handler.ts
 
   PipelineSyncProductFunction:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: RDCScraper-PipelineSyncProductFunction
-      CodeUri: src/core/pipeline/sync_product
+      CodeUri: src/pipeline/sync-product/
       Handler: handler.handler
-      Runtime: python3.14
-      Architectures:
-        - arm64
-      Timeout: 300
       MemorySize: 1024
-      Policies:
-        - S3CrudPolicy:
-            BucketName: !Ref S3ImagesBucket
+      Timeout: 300
       Environment:
         Variables:
           MONGODB_URI: !Ref MongoDbUri
           MONGODB_DB: !Ref MongoDbDatabase
-          S3_IMAGES_BUCKET: !Ref S3ImagesBucket
+          S3_BUCKET: !Ref S3ImagesBucket
+      Policies:
+        - S3WritePolicy:
+            BucketName: !Ref S3ImagesBucket
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        EntryPoints:
+          - handler.ts
+        External:
+          - sharp
 
   PipelineMarkOutOfStockFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: RDCScraper-PipelineMarkOutOfStock
-      CodeUri: src/core/pipeline/mark_out_of_stock
+      FunctionName: RDCScraper-PipelineMarkOutOfStockFunction
+      CodeUri: src/pipeline/mark-out-of-stock/
       Handler: handler.handler
-      Runtime: python3.14
-      Architectures:
-        - arm64
-      Timeout: 60
       MemorySize: 256
+      Timeout: 60
       Environment:
         Variables:
           MONGODB_URI: !Ref MongoDbUri
           MONGODB_DB: !Ref MongoDbDatabase
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        EntryPoints:
+          - handler.ts
 
   # PipelineSendReportFunction:
   #   Type: AWS::Serverless::Function
   #   Properties:
-  #     FunctionName: RDCScraper-PipelineSendReport
-  #     CodeUri: src/core/pipeline/send_report
+  #     FunctionName: RDCScraper-PipelineSendReportFunction
+  #     CodeUri: src/pipeline/send-report/
   #     Handler: handler.handler
-  #     Runtime: python3.12
-  #     Architectures:
-  #       - arm64
-  #     Timeout: 30
   #     MemorySize: 256
+  #     Timeout: 60
   #     Environment:
   #       Variables:
   #         RESEND_API_KEY: !Ref ResendApiKey
   #         EMAIL_SENDER: !Ref EmailSender
   #         EMAIL_RECIPIENT: !Ref EmailRecipient
+  #   Metadata:
+  #     BuildMethod: esbuild
+  #     BuildProperties:
+  #       Minify: true
+  #       Target: es2022
+  #       EntryPoints:
+  #         - handler.ts
 
-  ########################################
-  # STEP FUNCTIONS ORCHESTRATOR
-  ########################################
+  # ── Step Functions ────────────────────────────────────────────────────────
 
   RDCScraperOrchestrator:
     Type: AWS::Serverless::StateMachine
     Properties:
       Name: RDCScraper-Orchestrator
       Definition:
-        Comment: "load_configs -> scrape_parallel -> merge_results -> sync_pipeline[find_by_path -> search_drinks -> sync_product] -> mark_out_of_stock"
+        Comment: "load_configs -> scrape_parallel -> merge_results -> sync_pipeline -> mark_out_of_stock"
         StartAt: LoadConfigs
-        TimeoutSeconds: 900
         States:
           LoadConfigs:
             Type: Task
-            Resource: arn:aws:states:::lambda:invoke
-            OutputPath: $.Payload
-            Parameters:
-              FunctionName: !Ref PipelineLoadConfigsFunction
-              Payload: {}
+            Resource: !GetAtt PipelineLoadConfigsFunction.Arn
+            ResultPath: $
             Next: ScrapeParallel
 
           ScrapeParallel:
             Type: Map
-            ItemsPath: $.spiders
+            InputPath: $.spiders
+            ItemsPath: $
             MaxConcurrency: 5
             Iterator:
-              StartAt: InvokeSpider
+              StartAt: RunSpider
               States:
-                InvokeSpider:
+                RunSpider:
                   Type: Task
                   Resource: arn:aws:states:::lambda:invoke
-                  OutputPath: $.Payload
                   Parameters:
                     FunctionName.$: $.lambda_name
                     Payload:
                       config.$: $.config
                       execution_id.$: $$.Execution.Name
+                  ResultSelector:
+                    s3_key.$: $.Payload.s3_key
                   End: true
+            ResultPath: $.spider_results
             Next: MergeResults
 
           MergeResults:
             Type: Task
-            Resource: arn:aws:states:::lambda:invoke
-            OutputPath: $.Payload
+            Resource: !GetAtt PipelineMergeResultsFunction.Arn
             Parameters:
-              FunctionName: !Ref PipelineMergeResultsFunction
-              Payload:
-                s3_keys.$: $
-                execution_id.$: $$.Execution.Name
+              s3_keys.$: "$.spider_results[*].s3_key"
+              execution_id.$: "$$.Execution.Name"
+            ResultPath: $.batches
             Next: SyncPipeline
 
           SyncPipeline:
             Type: Map
+            InputPath: $.batches
             ItemsPath: $
             MaxConcurrency: 10
             Iterator:
@@ -329,103 +315,47 @@ Resources:
               States:
                 FindByPath:
                   Type: Task
-                  Resource: arn:aws:states:::lambda:invoke
-                  OutputPath: $.Payload
+                  Resource: !GetAtt PipelineFindByPathFunction.Arn
                   Parameters:
-                    FunctionName: !Ref PipelineFindByPathFunction
-                    Payload:
-                      s3_key.$: $.s3_key
-                      category.$: $.category
-                      sync_token.$: $$.Execution.StartTime
+                    s3_key.$: $.s3_key
+                    category.$: $.category
+                    sync_token.$: $$.Execution.StartTime
                   Next: SearchDrinks
-
                 SearchDrinks:
                   Type: Task
-                  Resource: arn:aws:states:::lambda:invoke
-                  OutputPath: $.Payload
-                  Parameters:
-                    FunctionName: !Ref PipelineSearchDrinksFunction
-                    Payload.$: $
+                  Resource: !GetAtt PipelineSearchDrinksFunction.Arn
                   Next: SyncProduct
-
                 SyncProduct:
                   Type: Task
-                  Resource: arn:aws:states:::lambda:invoke
-                  OutputPath: $.Payload
-                  Parameters:
-                    FunctionName: !Ref PipelineSyncProductFunction
-                    Payload.$: $
+                  Resource: !GetAtt PipelineSyncProductFunction.Arn
                   End: true
+            ResultPath: $.sync_results
             Next: MarkOutOfStock
 
           MarkOutOfStock:
             Type: Task
-            Resource: arn:aws:states:::lambda:invoke
-            OutputPath: $.Payload
+            Resource: !GetAtt PipelineMarkOutOfStockFunction.Arn
             Parameters:
-              FunctionName: !Ref PipelineMarkOutOfStockFunction
-              Payload:
-                sync_token.$: $$.Execution.StartTime
+              sync_token.$: "$$.Execution.StartTime"
             End: true
 
-          # -- SendReport -- commented until integrated
-
-      Role: !GetAtt RDCScraperOrchestratorRole.Arn
-
-  ########################################
-  # IAM ROLES
-  ########################################
-
-  RDCScraperOrchestratorRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: states.amazonaws.com
-            Action: sts:AssumeRole
       Policies:
-        - PolicyName: StepFnLambdaInvokePolicy
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - lambda:InvokeFunction
-                Resource: "*"
-
-  # -- Commented until schedule integration --
-
-  # RDCScraperScheduleRule:
-  #   Type: AWS::Events::Rule
-  #   Properties:
-  #     Name: RDCScraper-ScheduleTrigger
-  #     Description: Daily scraping trigger for RDC pipeline
-  #     ScheduleExpression: cron(0 10,18 * * ? *)
-  #     State: ENABLED
-  #     Targets:
-  #       - Arn: !Ref RDCScraperOrchestrator
-  #         RoleArn: !GetAtt RDCScraperEventBridgeRole.Arn
-  #         Id: RDCScraper-OrchestratorTarget
-
-  # RDCScraperEventBridgeRole:
-  #   Type: AWS::IAM::Role
-  #   Properties:
-  #     AssumeRolePolicyDocument:
-  #       Version: "2012-10-17"
-  #       Statement:
-  #         - Effect: Allow
-  #           Principal:
-  #             Service: events.amazonaws.com
-  #           Action: sts:AssumeRole
-  #     Policies:
-  #       - PolicyName: StartStepFunctionPolicy
-  #         PolicyDocument:
-  #           Version: "2012-10-17"
-  #           Statement:
-  #             - Effect: Allow
-  #               Action:
-  #                 - states:StartExecution
-  #               Resource: !Ref RDCScraperOrchestrator
+        - LambdaInvokePolicy:
+            FunctionName: !Ref PipelineLoadConfigsFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref SpiderJumboFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref PipelineMergeResultsFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref PipelineFindByPathFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref PipelineSearchDrinksFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref PipelineSyncProductFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref PipelineMarkOutOfStockFunction
+      Tracing:
+        Enabled: true
+      Logging:
+        Level: ERROR
+        IncludeExecutionData: false
