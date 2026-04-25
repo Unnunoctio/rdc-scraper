@@ -12,17 +12,19 @@ export async function updatePriceIfChanged(
   scraped: ScrapedProduct,
   syncToken: string,
 ): Promise<void> {
-  await Product.updateOne(
-    { _id: product._id, 'websites.path': scraped.url },
-    {
-      $set: {
-        'websites.$.price':      scraped.price,
-        'websites.$.bestPrice':  scraped.bestPrice,
-        'websites.$.lastUpdate': syncToken,
-        'websites.$.inStock':    true,
-      },
-    },
-  )
+  const website = product.websites.find(w => w.path === scraped.url)
+  const priceChanged = !website || website.price !== scraped.price || website.bestPrice !== scraped.bestPrice
+
+  const $set: Record<string, unknown> = {
+    'websites.$.lastUpdate': syncToken,
+    'websites.$.inStock':    true,
+  }
+  if (priceChanged) {
+    $set['websites.$.price']     = scraped.price
+    $set['websites.$.bestPrice'] = scraped.bestPrice
+  }
+
+  await Product.updateOne({ _id: product._id, 'websites.path': scraped.url }, { $set })
   await upsertPriceLogToday(product._id as Types.ObjectId, scraped.url, scraped.price, scraped.bestPrice)
 }
 
