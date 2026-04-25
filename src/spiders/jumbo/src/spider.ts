@@ -1,7 +1,5 @@
-import { BaseSpider, JsonFetcher, extractField } from '@rdc/spider'
-import type { ScrapedProduct, FieldConfig } from '@rdc/spider'
-
-// ============= EXTRACTION HELPERS =============
+import { BaseSpider, JsonFetcher } from '@rdc/spider'
+import type { ScrapedProduct } from '@rdc/spider'
 
 function normalize(text: string): string {
   return text
@@ -92,8 +90,6 @@ function extractPackaging(
   return undefined
 }
 
-// ============= JUMBO API SHAPES =============
-
 interface JumboPlpResponse {
   results?: number
   products?: Array<{ slug?: string }>
@@ -119,8 +115,6 @@ interface JumboPdpResponse {
   slug?: string
   specifications?: JumboSpec[]
 }
-
-// ============= JUMBO SPIDER =============
 
 export class JumboSpider extends BaseSpider {
   private get _source(): string {
@@ -155,7 +149,7 @@ export class JumboSpider extends BaseSpider {
     return (this.config['headers'] as Record<string, string> | undefined) ?? {}
   }
 
-  protected _setupFetchers(): void {
+  _setupFetchers(): void {
     this.fetchers.set('json', new JsonFetcher())
   }
 
@@ -183,27 +177,6 @@ export class JumboSpider extends BaseSpider {
     return { store: this._store, slug }
   }
 
-  // Override run() to add PDP detail-fetch step, mirroring the Python spider
-  override async run(): Promise<ScrapedProduct[]> {
-    const categoryUrls = this.config['category_urls']
-    if (!Array.isArray(categoryUrls)) throw new Error('config.category_urls must be an array')
-
-    const allPages = await Promise.all((categoryUrls as string[]).map(url => this._getPagesForCategory(url)))
-
-    const slugGroups = await Promise.all(
-      allPages.flat().map(({ page, categoryUrl }) => this._getProductsFromPage(page, categoryUrl))
-    )
-    // slugGroups contains intermediate slug records (stored as ScrapedProduct placeholders)
-    // We re-interpret them to get actual slugs
-    const slugs = (slugGroups.flat() as unknown as Array<{ slug: string }>).map(s => s.slug)
-
-    const detailed = await this._fetchAllDetails(slugs)
-    const unique = this._deduplicate(detailed)
-    console.log(`[JumboSpider] ${unique.length} unique products scraped`)
-    return unique
-  }
-
-  // Step 1: compute offset page ranges for a category
   async _getPagesForCategory(categoryUrl: string): Promise<Array<{ page: unknown; categoryUrl: string }>> {
     const body = this._buildPlpBody(categoryUrl, 0, this._pageSize - 1)
     const fetcher = this.fetch('json') as JsonFetcher
@@ -219,7 +192,7 @@ export class JumboSpider extends BaseSpider {
     }))
   }
 
-  // Step 2: fetch slugs from one PLP page
+  // Fetches slugs from a PLP page, then fetches PDP details for each slug
   async _getProductsFromPage(page: unknown, categoryUrl: string): Promise<ScrapedProduct[]> {
     const [fromOffset, toOffset] = (page as string).split(':').map(Number)
     const body = this._buildPlpBody(categoryUrl, fromOffset, toOffset)
@@ -227,18 +200,12 @@ export class JumboSpider extends BaseSpider {
     const data = (await fetcher.post(this._productListUrl, body, { headers: this._headers })) as JumboPlpResponse | null
     if (!data) return []
 
-    const results: Array<{ slug: string }> = []
-    for (const product of data.products ?? []) {
-      if (product.slug) results.push({ slug: product.slug })
-    }
-    // Return as unknown cast — run() re-interprets these as slug records
-    return results as unknown as ScrapedProduct[]
-  }
+    const slugs = (data.products ?? [])
+      .map(p => p.slug)
+      .filter((s): s is string => !!s)
 
-  // Step 3: fetch PDP detail for each slug
-  private async _fetchAllDetails(slugs: string[]): Promise<ScrapedProduct[]> {
     const results = await Promise.all(slugs.map(slug => this._fetchDetail(slug)))
-    return results.filter((r): r is ScrapedProduct => r !== null)
+    return results.filter((p): p is ScrapedProduct => p !== null)
   }
 
   private async _fetchDetail(slug: string): Promise<ScrapedProduct | null> {
@@ -253,29 +220,26 @@ export class JumboSpider extends BaseSpider {
     }
   }
 
-  // Step 4: format PDP response into ScrapedProduct
   _formatProduct(raw: unknown, ...args: unknown[]): ScrapedProduct {
     const data = raw as JumboPdpResponse
     const slug = (args[0] as string | undefined) ?? data.slug ?? ''
 
-    const item = data.items?.[0]
+    const item = data.items?.[0] as JumboItem | undefined
     if (!item) throw new Error('No items in PDP response')
 
-    const nameConfig: FieldConfig = { paths: ['name'], type: 'string' }
-    const name = extractField(item, nameConfig) as string | undefined
+    const name = item.name
     if (!name) throw new Error('Missing name')
 
-    const bestPrice = (extractField(item, { paths: ['price'], type: 'int' }) as number | undefined) ?? 0
-    const price = (extractField(item, { paths: ['listPrice'], type: 'int' }) as number | undefined) ?? 0
+    const bestPrice = item.price ?? 0
+    const price = item.listPrice ?? 0
 
     if (!price && !bestPrice) throw new Error('Missing price')
 
     const url = this._buildProductUrl(slug)
     if (!url) throw new Error('Missing url')
 
-    const brand = (extractField(data, { paths: ['brand'], type: 'string' }) as string | undefined) ?? undefined
-
-    const skuVal = extractField(data, { paths: ['reference'], type: 'string' }) as string | undefined
+    const brand = data.brand ?? undefined
+    const skuVal = data.reference
 
     const images = item.images ?? []
     let imageUrl: string | undefined
@@ -300,8 +264,8 @@ export class JumboSpider extends BaseSpider {
 
     return {
       name,
-      price: price || bestPrice,
-      bestPrice: bestPrice || price,
+      price: price ?? bestPrice,
+      bestPrice: bestPrice ?? price,
       url,
       source: this._source,
       brand: brand || undefined,

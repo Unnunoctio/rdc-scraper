@@ -287,38 +287,51 @@ describe('JumboSpider._getProductsFromPage', () => {
     vi.restoreAllMocks()
   })
 
-  it('fetches PLP with correct offset and extracts slugs', async () => {
+  it('fetches PLP with correct offset then fetches PDP for each slug', async () => {
     const spider = new JumboSpider(makeConfig())
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        results: 2,
-        products: [
-          { slug: 'cerveza-abc-500ml' },
-          { slug: 'cerveza-xyz-330ml' },
-          { slug: undefined }, // should be filtered out
-        ],
-      }),
-    })
+    const plpResponse = {
+      results: 2,
+      products: [
+        { slug: 'cerveza-abc-500ml' },
+        { slug: undefined }, // should be filtered out
+      ],
+    }
+    const pdpResponse = makePdpResponse({ slug: 'cerveza-abc-500ml' })
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => plpResponse }) // PLP call
+      .mockResolvedValueOnce({ ok: true, json: async () => pdpResponse }) // PDP call
     vi.stubGlobal('fetch', mockFetch)
 
-    const slugRecords = await spider._getProductsFromPage('50:99', 'cervezas')
+    const products = await spider._getProductsFromPage('50:99', 'cervezas')
 
-    // Returns slug records cast as ScrapedProduct[]
-    expect(slugRecords).toHaveLength(2)
-    const records = slugRecords as unknown as Array<{ slug: string }>
-    expect(records[0].slug).toBe('cerveza-abc-500ml')
-    expect(records[1].slug).toBe('cerveza-xyz-330ml')
+    expect(products).toHaveLength(1)
+    expect(products[0].name).toBe('Cerveza Kunstmann Torobayo Lager 500ml')
+    expect(products[0].url).toBe('https://www.jumbo.cl/cerveza-abc-500ml/p')
 
-    const callArgs = mockFetch.mock.calls[0]
-    const body = JSON.parse(callArgs[1].body)
-    expect(body.from).toBe(50)
-    expect(body.to).toBe(99)
+    // First call must be PLP with correct offsets
+    const plpCallBody = JSON.parse(mockFetch.mock.calls[0][1].body)
+    expect(plpCallBody.from).toBe(50)
+    expect(plpCallBody.to).toBe(99)
   })
 
-  it('returns empty array when fetch fails', async () => {
+  it('returns empty array when PLP fetch fails', async () => {
     const spider = new JumboSpider(makeConfig())
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }))
+    const result = await spider._getProductsFromPage('0:49', 'cervezas')
+    expect(result).toEqual([])
+  })
+
+  it('skips products whose PDP fetch fails', async () => {
+    const spider = new JumboSpider(makeConfig())
+    const plpResponse = {
+      results: 1,
+      products: [{ slug: 'bad-product' }],
+    }
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => plpResponse }) // PLP
+      .mockResolvedValueOnce({ ok: false }) // PDP fails
+    vi.stubGlobal('fetch', mockFetch)
+
     const result = await spider._getProductsFromPage('0:49', 'cervezas')
     expect(result).toEqual([])
   })
