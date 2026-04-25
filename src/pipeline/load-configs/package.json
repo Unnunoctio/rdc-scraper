@@ -1,0 +1,14 @@
+{
+  "name": "@rdc/pipeline-load-configs",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@rdc/database": "workspace:*",
+    "@aws-sdk/client-dynamodb": "3.1037.0",
+    "@aws-sdk/util-dynamodb": "3.996.2"
+  },
+  "devDependencies": {
+    "@types/node": "25.6.0"
+  }
+}
