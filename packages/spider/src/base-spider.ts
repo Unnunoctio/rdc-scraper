@@ -11,8 +11,9 @@ export abstract class BaseSpider {
   }
 
   async run(): Promise<ScrapedProduct[]> {
-    const categoryUrls = this.config['category_urls'] as string[]
-    const allPages = await Promise.all(categoryUrls.map(url => this._getPagesForCategory(url)))
+    const categoryUrls = this.config['category_urls']
+    if (!Array.isArray(categoryUrls)) throw new Error('config.category_urls must be an array')
+    const allPages = await Promise.all((categoryUrls as string[]).map(url => this._getPagesForCategory(url)))
     const products = await Promise.all(
       allPages.flat().map(({ page, categoryUrl }) => this._getProductsFromPage(page, categoryUrl))
     )
