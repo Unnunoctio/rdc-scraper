@@ -46,4 +46,9 @@ describe('generateProductSlug', () => {
     const slug = generateProductSlug('ABC123', 'Cerveza Austral Lager', 500)
     expect(slug).toMatch(/^abc123-cerveza-austral-lager-500$/)
   })
+
+  it('strips accents from slug', () => {
+    const slug = generateProductSlug('X', 'Barón Rojo', 750)
+    expect(slug).toBe('x-baron-rojo-750')
+  })
 })

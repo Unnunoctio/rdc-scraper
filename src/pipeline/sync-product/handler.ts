@@ -19,27 +19,31 @@ export const handler = async (event: {
   let created = 0
 
   await Promise.all(matched.map(async ({ product, drink }) => {
-    const quantity = product.quantity ?? 1
-    const infoId = await getInfoId(product.source)
-    if (!infoId) return
+    try {
+      const quantity = product.quantity ?? 1
+      const infoId = await getInfoId(product.source)
+      if (!infoId) return
 
-    const existing = await findProductByDrink(drink, quantity)
+      const existing = await findProductByDrink(drink, quantity)
 
-    if (existing) {
-      await addWebsite(existing._id, infoId, product, sync_token)
-      added++
-    } else {
-      const sku = await uniqueSku()
-      const name = generateProductName(drink, category, quantity)
-      const slug = generateProductSlug(sku, name, drink.volume)
-      const imageUrl = product.imageUrl ? await uploadImage(sku, category, product.imageUrl) : null
+      if (existing) {
+        await addWebsite(existing._id, infoId, product, sync_token)
+        added++
+      } else {
+        const sku = await uniqueSku()
+        const name = generateProductName(drink, category, quantity)
+        const slug = generateProductSlug(sku, name, drink.volume)
+        const imageUrl = product.imageUrl ? await uploadImage(sku, category, product.imageUrl) : null
 
-      await createProduct({
-        sku, name, slug, quantity, category,
-        drink: drink as IDrink,
-        imageUrl, infoId, scraped: product, syncToken: sync_token,
-      })
-      created++
+        await createProduct({
+          sku, name, slug, quantity, category,
+          drink: drink as IDrink,
+          imageUrl, infoId, scraped: product, syncToken: sync_token,
+        })
+        created++
+      }
+    } catch {
+      // continue batch on individual failure
     }
   }))
 
