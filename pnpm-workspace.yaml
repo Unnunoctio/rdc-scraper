@@ -1,4 +1,4 @@
 packages:
-  - "packages/*"
-  - "src/spiders/*"
-  - "src/pipeline/*"
+  - 'packages/*'
+  - 'src/spiders/*'
+  - 'src/pipeline/*'

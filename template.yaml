@@ -1,4 +1,4 @@
-AWSTemplateFormatVersion: "2010-09-09"
+AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 
 Parameters:
@@ -12,28 +12,28 @@ Parameters:
     Default: rincon-del-curao
   DrinksApiUrl:
     Type: String
-    Default: ""
+    Default: ''
   DrinksApiKey:
     Type: String
-    Default: ""
+    Default: ''
     NoEcho: true
   ProxyEndpoint:
     Type: String
-    Default: ""
+    Default: ''
   ProxyApiKey:
     Type: String
-    Default: ""
+    Default: ''
     NoEcho: true
   ResendApiKey:
     Type: String
-    Default: ""
+    Default: ''
     NoEcho: true
   EmailSender:
     Type: String
-    Default: ""
+    Default: ''
   EmailRecipient:
     Type: String
-    Default: ""
+    Default: ''
 
 Globals:
   Function:
@@ -42,7 +42,6 @@ Globals:
       - arm64
 
 Resources:
-
   # ── DynamoDB ──────────────────────────────────────────────────────────────
 
   SpiderConfigsTable:
@@ -73,9 +72,9 @@ Resources:
       PolicyDocument:
         Statement:
           - Effect: Allow
-            Principal: "*"
+            Principal: '*'
             Action: s3:GetObject
-            Resource: !Sub "arn:aws:s3:::${S3ImagesBucket}/images/*"
+            Resource: !Sub 'arn:aws:s3:::${S3ImagesBucket}/images/*'
 
   # ── Lambdas ───────────────────────────────────────────────────────────────
 
@@ -265,7 +264,7 @@ Resources:
     Properties:
       Name: RDCScraper-Orchestrator
       Definition:
-        Comment: "load_configs -> scrape_parallel -> merge_results -> sync_pipeline -> mark_out_of_stock"
+        Comment: 'load_configs -> scrape_parallel -> merge_results -> sync_pipeline -> mark_out_of_stock'
         StartAt: LoadConfigs
         States:
           LoadConfigs:
@@ -300,8 +299,8 @@ Resources:
             Type: Task
             Resource: !GetAtt PipelineMergeResultsFunction.Arn
             Parameters:
-              s3_keys.$: "$.spider_results[*].s3_key"
-              execution_id.$: "$$.Execution.Name"
+              s3_keys.$: '$.spider_results[*].s3_key'
+              execution_id.$: '$$.Execution.Name'
             ResultPath: $.batches
             Next: SyncPipeline
 
@@ -336,7 +335,7 @@ Resources:
             Type: Task
             Resource: !GetAtt PipelineMarkOutOfStockFunction.Arn
             Parameters:
-              sync_token.$: "$$.Execution.StartTime"
+              sync_token.$: '$$.Execution.StartTime'
             End: true
 
       Policies:
