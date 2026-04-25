@@ -37,4 +37,12 @@ describe('isComplete', () => {
       url: 'https://jumbo.cl/p', source: 'jumbo', volumeMl: 500, abv: 5.0,
     })).toBe(false)
   })
+
+  it('returns true when abv is 0 (non-alcoholic)', () => {
+    expect(isComplete({
+      name: 'Kombucha', brand: 'Acme', price: 500, bestPrice: 500,
+      url: 'https://example.com/p', source: 'example',
+      volumeMl: 330, abv: 0, packaging: 'Lata',
+    })).toBe(true)
+  })
 })

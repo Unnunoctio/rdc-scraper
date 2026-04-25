@@ -15,5 +15,10 @@ export interface ScrapedProduct {
 }
 
 export function isComplete(product: ScrapedProduct): boolean {
-  return !!(product.brand && product.volumeMl && product.abv && product.packaging)
+  return (
+    product.brand != null &&
+    product.volumeMl != null &&
+    product.abv != null &&
+    product.packaging != null
+  )
 }
