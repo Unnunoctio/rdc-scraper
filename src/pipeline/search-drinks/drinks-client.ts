@@ -34,7 +34,8 @@ export async function searchDrinks(product: {
     maxVolume: String(product.volumeMl + 10),
   })
 
-  const url = `${process.env['DRINKS_API_URL']}${apiCategory}?${params}`
+  const baseUrl = process.env['DRINKS_API_URL']!.replace(/\/?$/, '/')
+  const url = `${baseUrl}${apiCategory}?${params}`
   const response = await fetch(url, {
     headers: { Authorization: `Bearer ${process.env['DRINKS_API_KEY']}` },
   })

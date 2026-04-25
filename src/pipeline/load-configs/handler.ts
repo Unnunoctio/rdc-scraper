@@ -10,17 +10,20 @@ type SpiderItem = {
 }
 
 export const handler = async () => {
-  await getConnection()
-
   const result = await dynamo.send(new ScanCommand({
     TableName: process.env['SPIDER_CONFIGS_TABLE']!,
     FilterExpression: 'enabled = :enabled',
     ExpressionAttributeValues: { ':enabled': { BOOL: true } },
   }))
 
+  const items = result.Items ?? []
+  if (items.length === 0) return { spiders: [] }
+
+  await getConnection()
+
   const spiders: SpiderItem[] = []
 
-  for (const item of result.Items ?? []) {
+  for (const item of items) {
     const config = unmarshall(item) as {
       lambda_name: string
       config: Record<string, unknown>

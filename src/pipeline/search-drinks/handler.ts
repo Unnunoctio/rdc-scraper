@@ -23,11 +23,15 @@ export const handler = async (event: {
 }) => {
   const { remaining, sync_token, category } = event
 
-  const searchable = remaining.filter(isComplete)
-  const unmatched: ScrapedProduct[] = remaining.filter(p => !isComplete(p))
+  const complete: ScrapedProduct[] = []
+  const unmatched: ScrapedProduct[] = []
+  for (const p of remaining) {
+    if (isComplete(p)) complete.push(p)
+    else unmatched.push(p)
+  }
   const matched: Array<{ product: ScrapedProduct; drink: DrinkResult }> = []
 
-  await Promise.all(searchable.map(async product => {
+  await Promise.all(complete.map(async product => {
     const drinks = await searchDrinks({
       brand:     product.brand!,
       volumeMl:  product.volumeMl!,
