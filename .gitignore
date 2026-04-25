@@ -5,10 +5,9 @@ inspiration
 CLAUDE.md
 scripts/
 
-# Python environment
-.python-version
-pyproject.toml
-uv.lock
+# Node.js
+node_modules/
+dist/
 
 # AWS SAM build artifacts
 .aws-sam/
