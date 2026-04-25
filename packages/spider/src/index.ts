@@ -1,0 +1,7 @@
+export type { ScrapedProduct } from './standard-format'
+export { isComplete } from './standard-format'
+export { BaseSpider } from './base-spider'
+export type { IFetcher } from './fetchers'
+export { JsonFetcher, HtmlFetcher } from './fetchers'
+export type { FieldConfig } from './path-resolver'
+export { resolvePath, resolvePaths, extractField } from './path-resolver'
