@@ -1,6 +1,6 @@
 import { DynamoDBClient, ScanCommand } from '@aws-sdk/client-dynamodb'
 import { unmarshall } from '@aws-sdk/util-dynamodb'
-import { getConnection, Info } from '@rdc/database'
+import { db } from '@rdc/database'
 
 const dynamo = new DynamoDBClient({ region: 'sa-east-1' })
 
@@ -21,7 +21,7 @@ export const handler = async () => {
     const items = result.Items ?? []
     if (items.length === 0) return { spiders: [] }
 
-    await getConnection()
+    await db.connect()
 
     const spiders: SpiderItem[] = []
 
@@ -32,7 +32,7 @@ export const handler = async () => {
             info: { code: string; name: string; logo: string; url: string }
         }
 
-        await Info.updateOne({ code: config.info.code }, { $set: config.info }, { upsert: true })
+        await db.upsertInfo(config.info)
 
         spiders.push({ lambda_name: config.lambda_name, config: config.config })
     }
