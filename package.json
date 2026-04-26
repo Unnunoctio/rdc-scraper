@@ -1,0 +1,19 @@
+{
+  "name": "rdc-scraper",
+  "private": true,
+  "workspaces": [
+    "src/packages/*"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "build": "tsx esbuild.config.ts"
+  },
+  "devDependencies": {
+    "@types/node": "25.6.0",
+    "esbuild": "0.28.0",
+    "tsx": "4.21.0",
+    "typescript": "6.0.3",
+    "vitest": "4.1.5"
+  }
+}

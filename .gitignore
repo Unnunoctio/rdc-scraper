@@ -4,6 +4,7 @@ dockerfile
 inspiration
 CLAUDE.md
 scripts/
+docs/
 
 # Python environment
 .python-version
@@ -196,3 +197,8 @@ poetry.toml
 pyrightconfig.json
 
 # End of https://www.toptal.com/developers/gitignore/api/python
+
+# Node.js
+node_modules/
+*.tsbuildinfo
+
