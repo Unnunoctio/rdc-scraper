@@ -8,7 +8,7 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@rdc/spider": "workspace:*",
+    "@rdc/spider": "file:../spider",
     "mongoose": "9.5.0"
   },
   "devDependencies": {
