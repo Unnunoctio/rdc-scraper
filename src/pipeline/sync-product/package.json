@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@rdc/database": "workspace:*",
-    "@rdc/spider": "workspace:*",
+    "@rdc/database": "file:../../../packages/database",
+    "@rdc/spider": "file:../../../packages/spider",
     "@aws-sdk/client-s3": "3.817.0",
     "@img/sharp-linux-arm64": "0.34.5",
     "sharp": "0.34.5"

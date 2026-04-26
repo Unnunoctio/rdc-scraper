@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@rdc/database": "workspace:*",
+    "@rdc/database": "file:../../../packages/database",
     "@aws-sdk/client-dynamodb": "3.1037.0",
     "@aws-sdk/util-dynamodb": "3.996.2"
   },

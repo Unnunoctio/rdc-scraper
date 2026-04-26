@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@rdc/spider": "workspace:*",
+    "@rdc/spider": "file:../../../packages/spider",
     "exceljs": "4.4.0",
     "resend": "6.12.2"
   },

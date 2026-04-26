@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@rdc/database": "workspace:*"
+    "@rdc/database": "file:../../../packages/database"
   },
   "devDependencies": {
     "@types/node": "25.6.0"
