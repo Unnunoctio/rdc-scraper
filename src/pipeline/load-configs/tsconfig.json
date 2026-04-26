@@ -1,4 +1,6 @@
 {
   "extends": "../../../tsconfig.base.json",
-  "compilerOptions": { "rootDir": ".", "types": ["node"] }
+  "compilerOptions": {
+    "types": ["node"]
+  }
 }
