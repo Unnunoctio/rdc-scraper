@@ -1,7 +1,0 @@
-export { db, DatabaseService } from './service'
-export type { IDrink, IProduct, IWebsite } from './models/product.model'
-export type { IInfo } from './models/info.model'
-export type { IPriceLog } from './models/price-log.model'
-export { Info } from './models/info.model'
-export { Product } from './models/product.model'
-export { PriceLog } from './models/price-log.model'
