@@ -1,34 +1,29 @@
 [
-    {
-        "spider_id": "jumbo",
-        "lambda_name": "RDCScraper-SpiderJumboFunction",
-        "enabled": true,
-        "info": {
-            "code": "jumbo",
-            "name": "Jumbo",
-            "logo": "https://assets.jumbo.cl/favicon/favicon-192.png",
-            "url": "https://www.jumbo.cl"
-        },
-        "config": {
-            "source": "jumbo",
-            "product_list_url": "https://bff.jumbo.cl/catalog/plp",
-            "product_details_url": "https://bff.jumbo.cl/catalog/pdp",
-            "product_url": {
-                "prefix": "https://www.jumbo.cl/",
-                "postfix": "/p"
-            },
-            "page_size": 40,
-            "store": "jumboclj512",
-            "category_urls": [
-                "/licores-bebidas-y-aguas/cervezas",
-                "/licores-bebidas-y-aguas/destilados",
-                "/licores-bebidas-y-aguas/vinos"
-            ],
-            "headers": {
-                "Apikey": "be-reg-groceries-jumbo-catalog-w54byfvkmju5",
-                "Content-Type": "application/json",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
-            }
-        }
+  {
+    "spider_id": "jumbo",
+    "lambda_name": "RDCScraper-SpiderJumboFunction",
+    "enabled": true,
+    "info": {
+      "code": "jumbo",
+      "name": "Jumbo",
+      "logo": "https://assets.jumbo.cl/favicon/favicon-192.png",
+      "url": "https://www.jumbo.cl"
+    },
+    "config": {
+      "source": "jumbo",
+      "product_list_url": "https://bff.jumbo.cl/catalog/plp",
+      "product_details_url": "https://bff.jumbo.cl/catalog/pdp",
+      "product_url": {
+        "prefix": "https://www.jumbo.cl/",
+        "postfix": "/p"
+      },
+      "page_size": 40,
+      "store": "jumboclj512",
+      "category_urls": ["/licores-bebidas-y-aguas/cervezas", "/licores-bebidas-y-aguas/destilados", "/licores-bebidas-y-aguas/vinos"],
+      "headers": {
+        "Apikey": "be-reg-groceries-jumbo-catalog-w54byfvkmju5",
+        "Content-Type": "application/json"
+      }
     }
+  }
 ]
