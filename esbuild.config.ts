@@ -15,6 +15,10 @@ const lambdas: Array<{ entry: string; out: string }> = [
         out: 'dist/pipeline/load-configs/handler.js',
     },
     {
+        entry: 'src/pipeline/merge-results/src/handler.ts',
+        out: 'dist/pipeline/merge-results/handler.js',
+    },
+    {
         entry: 'src/spiders/jumbo/src/handler.ts',
         out: 'dist/spiders/jumbo/handler.js',
     },
