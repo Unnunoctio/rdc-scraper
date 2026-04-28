@@ -161,23 +161,23 @@ Resources:
           PROXY_ENDPOINT: !Ref ProxyEndpoint
           PROXY_API_KEY: !Ref ProxyApiKey
 
-  # PipelineMergeResultsFunction:
-  #   Type: AWS::Serverless::Function
-  #   Properties:
-  #     FunctionName: RDCScraper-PipelineMergeResultsFunction
-  #     CodeUri: src/core/pipeline/merge_results
-  #     Handler: handler.handler
-  #     Runtime: python3.14
-  #     Architectures:
-  #       - arm64
-  #     Timeout: 30
-  #     MemorySize: 512
-  #     Policies:
-  #       - S3CrudPolicy:
-  #           BucketName: !Ref S3ImagesBucket
-  #     Environment:
-  #       Variables:
-  #         S3_PIPELINE_BUCKET: !Ref S3ImagesBucket
+  PipelineMergeResultsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: RDCScraper-PipelineMergeResultsFunction
+      CodeUri: dist/pipeline/merge-results
+      Handler: handler.handler
+      Runtime: nodejs24.x
+      Architectures:
+        - arm64
+      Timeout: 30
+      MemorySize: 512
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref S3ImagesBucket
+      Environment:
+        Variables:
+          S3_PIPELINE_BUCKET: !Ref S3ImagesBucket
 
   # PipelineFindByPathFunction:
   #   Type: AWS::Serverless::Function
@@ -307,19 +307,19 @@ Resources:
                       config.$: $.config
                       execution_id.$: $$.Execution.Name
                   End: true
-            End: true
-          #  Next: MergeResults # Uncomment when spider mergeResults are migrated
+            Next: MergeResults
 
-          # MergeResults:
-          #   Type: Task
-          #   Resource: arn:aws:states:::lambda:invoke
-          #   OutputPath: $.Payload
-          #   Parameters:
-          #     FunctionName: !Ref PipelineMergeResultsFunction
-          #     Payload:
-          #       s3_keys.$: $
-          #       execution_id.$: $$.Execution.Name
-          #   Next: SyncPipeline
+          MergeResults:
+            Type: Task
+            Resource: arn:aws:states:::lambda:invoke
+            OutputPath: $.Payload
+            Parameters:
+              FunctionName: !Ref PipelineMergeResultsFunction
+              Payload:
+                s3_keys.$: $
+                execution_id.$: $$.Execution.Name
+            End: true
+          #  Next: SyncPipeline # Uncomment when SyncPipeline is migrated
 
           # SyncPipeline:
           #   Type: Map
