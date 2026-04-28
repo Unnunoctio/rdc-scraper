@@ -1,0 +1,7 @@
+export { BaseSpider } from './base-spider'
+export { HtmlFetcher } from './fetchers/html-fetcher'
+export { JsonFetcher } from './fetchers/json-fetcher'
+export { ProxyFetcher } from './fetchers/proxy-fetcher'
+export type { IFetcher, IFetchOptions, IFieldConfig, IScrapedProduct } from './types'
+export { extractField, extractProductFields, resolvePath, resolvePaths } from './utils/path-resolver'
+export { getUserAgent } from './utils/user-agent'
