@@ -2,7 +2,8 @@
   "name": "rdc-scraper",
   "private": true,
   "workspaces": [
-    "src/packages/*"
+    "src/packages/*",
+    "src/spiders/*"
   ],
   "scripts": {
     "test": "vitest run",
