@@ -1,4 +1,4 @@
-AWSTemplateFormatVersion: "2010-09-09"
+AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: RDC Scraper - Beverage price scraper for Chilean e-commerce sites
 
@@ -21,37 +21,37 @@ Parameters:
   DrinksApiUrl:
     Type: String
     Description: RDC Drinks API base URL
-    Default: ""
+    Default: ''
 
   DrinksApiKey:
     Type: String
     Description: RDC Drinks API key
-    Default: ""
+    Default: ''
 
   ProxyEndpoint:
     Type: String
     Description: Proxy endpoint for Cloudflare bypass
-    Default: ""
+    Default: ''
 
   ProxyApiKey:
     Type: String
     Description: Proxy API key
-    Default: ""
+    Default: ''
 
   ResendApiKey:
     Type: String
     Description: Resend API key for email notifications
-    Default: ""
+    Default: ''
 
   EmailSender:
     Type: String
     Description: Sender email address (must be verified in Resend)
-    Default: ""
+    Default: ''
 
   EmailRecipient:
     Type: String
     Description: Recipient email for unmatched products report
-    Default: ""
+    Default: ''
 
 Resources:
   ########################################
@@ -91,12 +91,12 @@ Resources:
     Properties:
       Bucket: !Ref ProductImagesBucket
       PolicyDocument:
-        Version: "2012-10-17"
+        Version: '2012-10-17'
         Statement:
           - Effect: Allow
-            Principal: "*"
+            Principal: '*'
             Action: s3:GetObject
-            Resource: !Sub "arn:aws:s3:::${S3ImagesBucket}/images/*"
+            Resource: !Sub 'arn:aws:s3:::${S3ImagesBucket}/images/*'
 
   ########################################
   # PIPELINE LAMBDAS
@@ -141,25 +141,25 @@ Resources:
   # SPIDER LAMBDAS
   ########################################
 
-  # SpiderJumboFunction:
-  #   Type: AWS::Serverless::Function
-  #   Properties:
-  #     FunctionName: RDCScraper-SpiderJumboFunction
-  #     CodeUri: src/core/spiders/jumbo
-  #     Handler: handler.handler
-  #     Runtime: python3.14
-  #     Architectures:
-  #       - arm64
-  #     Layers:
-  #       - !Ref SharedUtilsLayer
-  #     Timeout: 300
-  #     MemorySize: 1024
-  #     Policies:
-  #       - S3WritePolicy:
-  #           BucketName: !Ref S3ImagesBucket
-  #     Environment:
-  #       Variables:
-  #         S3_PIPELINE_BUCKET: !Ref S3ImagesBucket
+  SpiderJumboFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: RDCScraper-SpiderJumboFunction
+      CodeUri: dist/spiders/jumbo
+      Handler: handler.handler
+      Runtime: nodejs24.x
+      Architectures:
+        - arm64
+      Timeout: 300
+      MemorySize: 1024
+      Policies:
+        - S3WritePolicy:
+            BucketName: !Ref S3ImagesBucket
+      Environment:
+        Variables:
+          S3_PIPELINE_BUCKET: !Ref S3ImagesBucket
+          PROXY_ENDPOINT: !Ref ProxyEndpoint
+          PROXY_API_KEY: !Ref ProxyApiKey
 
   # PipelineMergeResultsFunction:
   #   Type: AWS::Serverless::Function
@@ -277,7 +277,7 @@ Resources:
     Properties:
       Name: RDCScraper-Orchestrator
       Definition:
-        Comment: "load_configs -> [migration in progress]"
+        Comment: 'load_configs -> [migration in progress]'
         StartAt: LoadConfigs
         TimeoutSeconds: 900
         States:
@@ -288,27 +288,27 @@ Resources:
             Parameters:
               FunctionName: !Ref PipelineLoadConfigsFunction
               Payload: {}
-            End: true
-            # Next: ScrapeParallel  # Uncomment when spider lambdas are migrated
+            Next: ScrapeParallel
 
-          # ScrapeParallel:
-          #   Type: Map
-          #   ItemsPath: $.spiders
-          #   MaxConcurrency: 5
-          #   Iterator:
-          #     StartAt: InvokeSpider
-          #     States:
-          #       InvokeSpider:
-          #         Type: Task
-          #         Resource: arn:aws:states:::lambda:invoke
-          #         OutputPath: $.Payload
-          #         Parameters:
-          #           FunctionName.$: $.lambda_name
-          #           Payload:
-          #             config.$: $.config
-          #             execution_id.$: $$.Execution.Name
-          #         End: true
-          #   Next: MergeResults
+          ScrapeParallel:
+            Type: Map
+            ItemsPath: $.spiders
+            MaxConcurrency: 5
+            Iterator:
+              StartAt: InvokeSpider
+              States:
+                InvokeSpider:
+                  Type: Task
+                  Resource: arn:aws:states:::lambda:invoke
+                  OutputPath: $.Payload
+                  Parameters:
+                    FunctionName.$: $.lambda_name
+                    Payload:
+                      config.$: $.config
+                      execution_id.$: $$.Execution.Name
+                  End: true
+            End: true
+          #  Next: MergeResults # Uncomment when spider mergeResults are migrated
 
           # MergeResults:
           #   Type: Task
@@ -377,7 +377,7 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: "2012-10-17"
+        Version: '2012-10-17'
         Statement:
           - Effect: Allow
             Principal:
@@ -386,12 +386,12 @@ Resources:
       Policies:
         - PolicyName: StepFnLambdaInvokePolicy
           PolicyDocument:
-            Version: "2012-10-17"
+            Version: '2012-10-17'
             Statement:
               - Effect: Allow
                 Action:
                   - lambda:InvokeFunction
-                Resource: "*"
+                Resource: '*'
 
   # -- Commented until schedule integration --
 
