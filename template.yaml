@@ -3,7 +3,7 @@ Transform: AWS::Serverless-2016-10-31
 Description: RDC Scraper - Beverage price scraper for Chilean e-commerce (Python 3.14)
 
 # ---------------------------------------------------------------------------
-# Fase 0 — andamiaje: solo bucket de imágenes + Lambda Layer compartida (vacía).
+# Fase 1 — bucket de imágenes + dos Lambda Layers compartidas (utils, database).
 # Las Lambdas del pipeline y la state machine se agregan en fases posteriores.
 # Convención de nombres: RDCScraper-[Nombre] (ver PLAN.md §8.1).
 # ---------------------------------------------------------------------------
@@ -48,15 +48,28 @@ Resources:
             Resource: !Sub 'arn:aws:s3:::${S3ImagesBucket}/images/*'
 
   ########################################
-  # SHARED LAMBDA LAYER
+  # SHARED LAMBDA LAYERS
+  #   utils     → fetchers, standard_format, naming, mappings (aiohttp, bs4)
+  #   database  → acceso a Mongo Atlas (pymongo[srv]); depende de utils
   ########################################
 
-  SharedLayer:
+  UtilsLayer:
     Type: AWS::Serverless::LayerVersion
     Properties:
-      LayerName: RDCScraper-SharedLayer
-      Description: Shared code (fetchers, standard_format, mongo, naming/mappings)
-      ContentUri: src/shared/
+      LayerName: RDCScraper-UtilsLayer
+      Description: Utils (fetchers, standard_format, naming, mappings)
+      ContentUri: src/layers/utils/
+      CompatibleRuntimes:
+        - python3.14
+      CompatibleArchitectures:
+        - arm64
+
+  DatabaseLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: RDCScraper-DatabaseLayer
+      Description: MongoDB Atlas access (client, infos, products, price_logs). Requires UtilsLayer.
+      ContentUri: src/layers/database/
       CompatibleRuntimes:
         - python3.14
       CompatibleArchitectures:
@@ -66,6 +79,9 @@ Outputs:
   ProductImagesBucketName:
     Description: S3 bucket for product images
     Value: !Ref ProductImagesBucket
-  SharedLayerArn:
-    Description: Shared Lambda Layer ARN
-    Value: !Ref SharedLayer
+  UtilsLayerArn:
+    Description: Utils Lambda Layer ARN
+    Value: !Ref UtilsLayer
+  DatabaseLayerArn:
+    Description: Database Lambda Layer ARN
+    Value: !Ref DatabaseLayer

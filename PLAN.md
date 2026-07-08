@@ -42,7 +42,7 @@
 | Contrato común | **`ScrapedProduct`** (salida) + **fetchers** (Layer) | Consolida lo único que debe ser homogéneo |
 | Datos de productos | **MongoDB Atlas** — driver **`pymongo==4.17`** (async nativo, `AsyncMongoClient`) | `motor` está deprecado; pymongo async integrado |
 | Imágenes + datos intermedios | **S3** (`rincon-del-curao`) | Público solo `images/*` |
-| Código compartido | **Lambda Layer** (`rdc_shared`) | Fetchers, formato, mongo, naming/mappings |
+| Código compartido | **2 Lambda Layers** (`utils`, `database`) | utils: fetchers/formato/naming/mappings · database: mongo |
 | Concurrencia | **asyncio + aiohttp** dentro de cada Lambda | Scraping y I/O masivo |
 | Notificaciones | **Resend** (email con Excel adjunto) | Reporte de productos sin match |
 | Bypass anti-bot | **Proxy HTTP externo** (opcional por spider) | Fallback cuando el fetch directo falla |
@@ -131,23 +131,26 @@ rdc-scraper/
 │   ├── seed_infos.py                # siembra seed/infos.json en Mongo (una vez)
 │   └── run_spider_local.py          # ejecuta un spider en local (sin AWS)
 │
-└── src/                             # ── código: layer compartido + una carpeta por Lambda ──
-    ├── shared/                      # ── Lambda Layer: código compartido (ContentUri) ──
-    │   ├── pyproject.toml           # deps: aiohttp, beautifulsoup4, pymongo==4.17
-    │   └── python/                  # SAM monta esta carpeta en sys.path
-    │       └── rdc_shared/
-    │           ├── __init__.py
-    │           ├── fetchers.py          # IFetcher, JsonFetcher, HtmlFetcher, ProxyFetcher  ← obligatorio
-    │           ├── standard_format.py   # ScrapedProduct + create_product                  ← contrato de salida
-    │           ├── path_resolver.py     # resolve_path / extract_field (opcional por spider)
-    │           ├── mappings.py          # CATEGORY_MAP, PACKAGING_MAP(_ES), SPIRIT_TYPE_MAP_ES
-    │           ├── naming.py            # generate_sku / product_name / product_slug / slugify
-    │           └── mongo/
-    │               ├── __init__.py
-    │               ├── client.py        # AsyncMongoClient + event loop persistente
-    │               ├── info_cache.py    # cache de infos {code: _id}
-    │               ├── products.py      # find_by_path, add_website, create_product, price logs
-    │               └── stock.py         # mark_out_of_stock
+└── src/                             # ── código: layers compartidas + una carpeta por Lambda ──
+    ├── layers/                      # ── Lambda Layers compartidas (ContentUri) ──
+    │   ├── utils/                   # deps: aiohttp, beautifulsoup4 (spiders + pipeline)
+    │   │   ├── pyproject.toml
+    │   │   └── python/              # SAM monta esta carpeta en sys.path
+    │   │       └── rdc_utils/
+    │   │           ├── __init__.py
+    │   │           ├── fetchers.py          # IFetcher, JsonFetcher, HtmlFetcher, ProxyFetcher  ← obligatorio
+    │   │           ├── standard_format.py   # ScrapedProduct + create_product                  ← contrato de salida
+    │   │           ├── mappings.py          # CATEGORY_MAP, PACKAGING_MAP(_ES), SPIRIT_TYPE_MAP_ES
+    │   │           └── naming.py            # generate_sku / product_name / product_slug / slugify
+    │   └── database/                # deps: pymongo==4.17 (Lambdas que tocan Mongo); depende de utils
+    │       ├── pyproject.toml
+    │       └── python/
+    │           └── rdc_database/
+    │               ├── __init__.py          # reexporta la superficie pública
+    │               ├── client.py            # AsyncMongoClient + event loop persistente
+    │               ├── infos.py             # cache de infos {code: _id} (allowlist gate)
+    │               ├── products.py          # find_by_path, add_website, create_product, mark_out_of_stock
+    │               └── price_logs.py        # upsert_today_price_log
     │
     ├── spiders/                     # cada spider: independiente, config propia en código
     │   └── jumbo/
@@ -182,11 +185,14 @@ rdc-scraper/
 
 ### Notas
 - **Contrato entre spiders:** cada `spider.py` es libre en su flujo, pero **debe** (a) usar los
-  fetchers de `rdc_shared.fetchers` y (b) devolver dicts con la forma de `ScrapedProduct`
-  (`rdc_shared.standard_format.create_product`). Nada más se comparte ni se impone.
+  fetchers de `rdc_utils.fetchers` y (b) devolver dicts con la forma de `ScrapedProduct`
+  (`rdc_utils.standard_format.create_product`). Nada más se comparte ni se impone.
 - **Config por spider:** vive en `src/spiders/<name>/config.py` como constantes; se elimina
   `seed/spider_configs.json` y la tabla DynamoDB.
-- **uv workspace:** el `pyproject.toml` raíz declara los miembros (`src/shared`,
+- **Dos layers:** `utils` (aiohttp/bs4) y `database` (pymongo). `database` depende de `utils`
+  (única cruzada: `products.py` → `rdc_utils.naming`/`mappings`); las Lambdas de escritura
+  adjuntan ambas. Los spiders solo adjuntan `utils`.
+- **uv workspace:** el `pyproject.toml` raíz declara los miembros (`src/layers/*`,
   `src/spiders/*`, `src/pipeline/*`); un único `uv.lock` fija todo.
 - `boto3` viene en el runtime de Lambda → **no** se declara como dependencia.
 
@@ -257,6 +263,9 @@ packaging? (Botella|Lata|Barril|Tetrapack)
   ```
 - **`priceLogs`** — histórico diario: `{ productId, websitePath, price, bestPrice, date(00:00 UTC) }`. Índice TTL sobre `date` → retención acotada del histórico.
 
+> **Colecciones e índices** los crea `scripts/init_db.py` (`make init-db`, idempotente), que refleja
+> exactamente la tabla de índices de §6.2. No siembra datos (eso es `seed_infos.py`, Fase 4).
+
 > La config de cada spider (urls, headers, categorías, store, page_size) ya **no** es un dato:
 > vive en `src/spiders/<name>/config.py`.
 
@@ -273,7 +282,7 @@ en Mongo.
    el pipeline, aunque su spider corra y scrapee.
 
 **Bloqueo en el momento de guardar (gate de escritura)**
-- El módulo compartido `rdc_shared/mongo/info_cache.py` carga en memoria el mapa
+- El módulo compartido `rdc_database/infos.py` carga en memoria el mapa
   `{ code → _id }` desde `infos` al inicio de la invocación (cacheado entre invocaciones por
   reutilización de contenedor).
 - En `find_by_path` y `sync_product`, **antes de escribir nada** para un producto se resuelve
@@ -305,7 +314,7 @@ usa el pipeline (derivadas de los `find_one`/`update` del prototipo). Definen lo
 
 | Colección | Índice | Campos (orden) | Único | Notas |
 |---|---|---|---|---|
-| `infos` | `code` | `code ↑` | ✅ | = `source` del spider; llave del info-cache |
+| `infos` | `unique_code` | `code ↑` | ✅ | = `source` del spider; llave del info-cache |
 | `products` | `unique_sku` | `sku ↑` | ✅ | SKU generado |
 | `products` | `unique_slug` | `slug ↑` | ✅ | slug público, único por definición |
 | `products` | `unique_website_path` | `websites.path ↑` | ✅ | una URL → un solo producto; llave de `find_by_path` |
@@ -322,7 +331,7 @@ usa el pipeline (derivadas de los `find_one`/`update` del prototipo). Definen lo
 **Comandos equivalentes**
 
 ```js
-db.infos.createIndex({ code: 1 }, { name: "code", unique: true })
+db.infos.createIndex({ code: 1 }, { name: "unique_code", unique: true })
 
 db.products.createIndex({ sku: 1 }, { name: "unique_sku", unique: true })
 db.products.createIndex({ slug: 1 }, { name: "unique_slug", unique: true })
@@ -347,7 +356,7 @@ db.priceLogs.createIndex({ date: 1 }, { name: "ttl_date", expireAfterSeconds: 15
 Lectura *índice → consulta del código → etapa donde impacta*.
 
 **`infos`**
-- **`code` (único):** una tienda por `code`; llave del *info-cache* (`infos.find({},{code:1})`) y del
+- **`unique_code` (`code`, único):** una tienda por `code`; llave del *info-cache* (`infos.find({},{code:1})`) y del
   upsert idempotente del seed (`find_one({code})`). Sostiene el **gate de §6.1** (`source → info_id`).
   La colección es minúscula: su valor es la **integridad del allowlist**, no la velocidad.
 
@@ -409,22 +418,83 @@ local sin que ensucie el repo**:
    AWS CLI v2 (`aws configure`, region `sa-east-1`), SAM CLI, Docker activo. Verificar
    (`uv --version`, `aws sts get-caller-identity`, `sam --version`, `docker info`) antes de seguir.
 2. `uv init` + estructura de carpetas de §4.
-3. `pyproject.toml` raíz como **workspace** con los miembros (`src/shared`, `src/spiders/*`, `src/pipeline/*`) y dev-deps (`ruff`, `pytest`).
+3. `pyproject.toml` raíz como **workspace** con los miembros (`src/layers/*`, `src/spiders/*`, `src/pipeline/*`) y dev-deps (`ruff`, `pytest`).
 4. `Makefile` (`build`, `deploy`, `seed`, `test`, `lint`) y `.gitignore` (`.deprecated/`, `.aws-sam/`, `samconfig.toml`, `__pycache__/`, `.venv/`).
 5. `template.yaml` mínimo: `ProductImagesBucket` + `LayerVersion` (vacía).
 6. `uv sync` + `sam validate` verdes.
 
-### Fase 1 — Layer compartida (`rdc_shared`)
-Portar desde el prototipo `src/shared/python/**`, re-empaquetado como `rdc_shared`:
-- `fetchers.py`, `standard_format.py`, `path_resolver.py` → tal cual, imports a `rdc_shared.*`.
-- Añadir `mappings.py` y `naming.py` (extraídos de `sync_product/utils.py`).
-- `mongo/` — consolidar `find_by_path/db.py` + `sync_product/db.py` + `mark_out_of_stock/db.py` en un módulo con **un solo** `AsyncMongoClient` y event loop persistente reutilizado entre invocaciones.
-- Declarar `LayerVersion` (runtime `python3.14`, arm64) y adjuntarla a todas las funciones.
-- **No** se porta `base_spider.py` (abstracción eliminada).
+### Fase 1 — Layers compartidas (`utils` + `database`)
+Portar desde el prototipo, sin reescribir lógica: reorganizar imports y **consolidar** el acceso
+a Mongo. Se reparte en **dos** Lambda Layers por dependencias y consumidores distintos:
+- **`utils`** (deps: `aiohttp`, `beautifulsoup4`) — la consumen spiders y pipeline; sin deps de DB.
+- **`database`** (deps: `pymongo` 4.17, trae `dnspython` para el SRV de Atlas) — la consumen las
+  Lambdas que tocan Mongo. **Depende de `utils`** (una sola cruzada: `products.py` usa
+  `rdc_utils.naming`/`rdc_utils.mappings`); las Lambdas de escritura adjuntan **ambas** layers.
+
+Estructura destino:
+
+```
+src/layers/
+├── utils/
+│   ├── pyproject.toml               # rdc-utils: aiohttp, beautifulsoup4
+│   └── python/rdc_utils/
+│       ├── __init__.py
+│       ├── fetchers.py              ← portar 1:1
+│       ├── standard_format.py       ← portar 1:1
+│       ├── mappings.py              ← *_MAP de sync_product/utils.py
+│       └── naming.py                ← generate_*/_slugify/_format_* de sync_product/utils.py
+└── database/
+    ├── pyproject.toml               # rdc-database: pymongo==4.17
+    └── python/rdc_database/
+        ├── __init__.py              ← reexporta la superficie pública
+        ├── client.py                ← conexión única por contenedor
+        ├── infos.py                 ← colección `infos` (allowlist gate)
+        ├── products.py              ← colección `products`
+        └── price_logs.py            ← colección `priceLogs`
+```
+
+**Paso 1.1 — Portar 1:1** (sólo stdlib + libs externas, cero imports internos):
+`fetchers.py`, `standard_format.py` → `rdc_utils/*` sin cambios. **No** se porta
+`path_resolver.py`: era extracción dirigida por config para el `BaseSpider`/DynamoDB eliminados;
+sin usos (los spiders extraen con lógica propia).
+
+**Paso 1.2 — Dividir `sync_product/utils.py`** (dentro de `utils`):
+- `mappings.py`: `CATEGORY_MAP`, `PACKAGING_MAP_ES`, `SPIRIT_TYPE_MAP_ES`.
+- `naming.py`: `generate_sku`, `_format_volume`, `_format_abv`, `generate_product_name`,
+  `generate_product_slug`, `_slugify`. Importa de `rdc_utils.mappings`.
+
+**Paso 1.3 — Consolidar Mongo por colección** (un solo `AsyncMongoClient` + event loop
+persistente reutilizado entre invocaciones; `AsyncMongoClient` se liga al loop vivo en su
+creación, por eso **no** se usa `asyncio.run()` por invocación). Reparto de funciones de los
+tres `db.py` del prototipo:
+
+| Archivo | Colección | Funciones |
+|---|---|---|
+| `client.py` | — | `_loop`+`set_event_loop`, `_client`, `run()`, `get_db()` |
+| `infos.py` | `infos` | `_info_cache`, `load_info_cache()`, `get_info_id()` |
+| `products.py` | `products` | `update_price_if_changed()`, `unique_sku()`, `add_website()`, `create_product()`, `mark_out_of_stock()` |
+| `price_logs.py` | `priceLogs` | `upsert_today_price_log()` **(unificado: estaba duplicado en find_by_path + sync_product)** |
+
+Cableado de imports internos: `products.py` importa `get_info_id` de `rdc_database.infos`,
+`upsert_today_price_log` de `rdc_database.price_logs`, y `generate_*`/`*_MAP` de
+`rdc_utils.naming`/`rdc_utils.mappings` (**la única cruzada database→utils**).
+Ningún módulo importa `client.py`: todas las funciones reciben `db` por parámetro (testeables).
+`get_info_id(source) → None` ⇒ el llamador bloquea la escritura y enruta a `unmatched`
+(`unknown_source`, ver §6.1). `rdc_database/__init__.py` reexporta la superficie pública para import plano.
+
+**Paso 1.4 — Empaquetado:** dos `LayerVersion` (`UtilsLayer`, `DatabaseLayer`), runtime
+`python3.14`, arm64. `database` declara **`pymongo==4.17.*`** (dnspython viene como dependencia
+directa de pymongo 4.17 → SRV de Atlas sin extras). Cada Lambda adjunta las layers que necesita:
+spiders → `utils`; Lambdas que escriben en Mongo → `utils` + `database`.
+
+**Paso 1.5 — Verificación:** `make sync` (`uv sync --all-packages`) verde, smoke test de imports
+(`from rdc_utils import ...` y `from rdc_database import run, get_db, get_info_id, ...` con ambos
+`python/` en `PYTHONPATH`), `ruff check src/layers` limpio, `sam validate`. **No** se porta
+`base_spider.py` (abstracción eliminada).
 
 ### Fase 2 — Spider Jumbo + ScrapeParallel
 - `spiders/jumbo/config.py`: constantes (antes en el item de DynamoDB).
-- `spiders/jumbo/spider.py`: portar la lógica de `JumboSpider` (PLP paginado → slugs → PDP → format con extractores de abv/volumen/cantidad/packaging), **sin heredar de BaseSpider**; usa `rdc_shared.fetchers` y `create_product`.
+- `spiders/jumbo/spider.py`: portar la lógica de `JumboSpider` (PLP paginado → slugs → PDP → format con extractores de abv/volumen/cantidad/packaging), **sin heredar de BaseSpider**; usa `rdc_utils.fetchers` y `create_product`.
 - `spiders/jumbo/handler.py`: corre el spider, sube JSON a `pipeline/runs/jumbo/<exec>.json`, devuelve `{s3_key, count}`.
 - State machine: estado `Parallel` con la rama `InvokeSpiderJumbo`.
 - Verificar en local con `scripts/run_spider_local.py jumbo`.
@@ -435,7 +505,7 @@ Portar desde el prototipo `src/shared/python/**`, re-empaquetado como `rdc_share
 
 ### Fase 4 — Seed de `infos` + SyncPipeline (Map: FindByPath → SearchDrinks → SyncProduct)
 - `seed/infos.json` + `scripts/seed_infos.py`: sembrar tiendas en Mongo (upsert idempotente por `code`). Es el **allowlist** de `source` válidos (ver §6.1).
-- `rdc_shared/mongo/info_cache.py`: mapa `{code → _id}`; **si `source` no está sembrado, bloquea la escritura** y enruta el producto a `unmatched` (`unknown_source`).
+- `rdc_database/infos.py`: mapa `{code → _id}`; **si `source` no está sembrado, bloquea la escritura** y enruta el producto a `unmatched` (`unknown_source`).
 - `find_by_path`: match por `websites.path`, `update_price_if_changed`, upsert `priceLogs` (solo si el `source` tiene `info`).
 - `search_drinks` + `drinks_client`: filtra por campos requeridos, consulta Drinks API, `_best_match` por subconjunto de palabras.
 - `sync_product` + `image_uploader`: gate de `info_id` → `add_website` o `create_product`; SKU único **antes** de subir imagen (evita huérfanos en S3); descarga → WebP (Pillow) → S3.
@@ -567,7 +637,7 @@ Priorizar tests de lógica pura (sin red): extractores de abv/volumen/cantidad/p
 - [ ] MongoDB Atlas: cluster + usuario + allowlist.
 - [ ] Cuentas externas: Resend (remitente verificado), Drinks API, Proxy.
 - [ ] Estructura de carpetas creada (§4).
-- [ ] Layer `rdc_shared` portada (fetchers + standard_format + mongo + naming/mappings) y `sam validate` verde.
+- [ ] Layers `utils` (fetchers + standard_format + naming/mappings) y `database` (mongo por colección) portadas, `sam validate` verde.
 - [ ] `ProductImagesBucket` desplegado.
 - [ ] Spider Jumbo probado en local (contrato `ScrapedProduct`).
 - [ ] `infos` sembrados en Mongo.
@@ -580,18 +650,17 @@ Priorizar tests de lógica pura (sin red): extractores de abv/volumen/cantidad/p
 
 ## 12. Reutilización directa del prototipo
 
-Estos archivos del branch actual se portan casi 1:1 (ajustando imports a `rdc_shared.*`):
+Estos archivos del branch actual se portan casi 1:1 (ajustando imports a `rdc_utils.*` / `rdc_database.*`):
 
 | Prototipo | Destino nuevo |
 |---|---|
-| `src/shared/python/fetchers.py` (prototipo) | `src/shared/python/rdc_shared/fetchers.py` |
-| `src/shared/python/standard_format.py` (prototipo) | `src/shared/python/rdc_shared/standard_format.py` |
-| `src/shared/python/path_resolver.py` (prototipo) | `src/shared/python/rdc_shared/path_resolver.py` |
+| `src/shared/python/fetchers.py` (prototipo) | `src/layers/utils/python/rdc_utils/fetchers.py` |
+| `src/shared/python/standard_format.py` (prototipo) | `src/layers/utils/python/rdc_utils/standard_format.py` |
 | `src/core/spiders/jumbo/spider.py` | `src/spiders/jumbo/spider.py` (**sin** herencia de BaseSpider) |
 | `src/core/spiders/jumbo/handler.py` | `src/spiders/jumbo/handler.py` |
 | `src/core/pipeline/{merge_results,find_by_path,search_drinks,sync_product,mark_out_of_stock,send_report}/handler.py` | `src/pipeline/*/handler.py` |
-| `src/core/pipeline/sync_product/{utils,image_uploader,drinks_client}.py` | `rdc_shared/{naming,mappings}.py` + `sync_product/image_uploader.py` + `search_drinks/drinks_client.py` |
-| `src/core/pipeline/*/db.py` | consolidado en `rdc_shared/mongo/` |
+| `src/core/pipeline/sync_product/{utils,image_uploader,drinks_client}.py` | `rdc_utils/{naming,mappings}.py` + `sync_product/image_uploader.py` + `search_drinks/drinks_client.py` |
+| `src/core/pipeline/*/db.py` | consolidado en `rdc_database/` **por colección** (`client.py`, `infos.py`, `products.py`, `price_logs.py`) |
 | `template.yaml` (secciones comentadas) | referencia para las Lambdas del SyncPipeline |
 | `samconfig.example.toml` | tal cual |
 
@@ -600,8 +669,9 @@ Estos archivos del branch actual se portan casi 1:1 (ajustando imports a `rdc_sh
 | Prototipo | Motivo |
 |---|---|
 | `src/shared/python/base_spider.py` | Abstracción eliminada — cada spider es libre |
+| `src/shared/python/path_resolver.py` | Extracción config-driven para BaseSpider/DynamoDB (eliminados); sin usos |
 | `src/core/pipeline/load_configs/**` | Sin DynamoDB; el pipeline arranca en `Parallel` |
 | `seed/spider_configs.json` + `SpiderConfigsTable` | Config ahora vive en `src/spiders/<name>/config.py` |
 
 > El código Python del prototipo sigue siendo la base funcional; el trabajo es **reorganizarlo**
-> (uv + Layer `rdc_shared` + spiders independientes), no reescribir la lógica de scraping ni de dominio.
+> (uv + Layers `utils`/`database` + spiders independientes), no reescribir la lógica de scraping ni de dominio.

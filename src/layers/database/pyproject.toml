@@ -1,0 +1,12 @@
+[project]
+name = "rdc-database"
+version = "0.1.0"
+description = "Database layer for RDC Scraper (MongoDB Atlas access: client, infos, products, price_logs)"
+requires-python = ">=3.14"
+dependencies = [
+    # pymongo 4.17 ya trae dnspython como dependencia directa → SRV (mongodb+srv://) sin extras.
+    "pymongo==4.17.*",
+]
+
+[tool.uv]
+package = false

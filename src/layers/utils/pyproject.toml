@@ -1,12 +1,11 @@
 [project]
-name = "rdc-shared"
+name = "rdc-utils"
 version = "0.1.0"
-description = "Shared code for RDC Scraper Lambdas (fetchers, standard_format, mongo, naming/mappings)"
+description = "Utils layer for RDC Scraper (fetchers, standard_format, naming, mappings)"
 requires-python = ">=3.14"
 dependencies = [
     "aiohttp>=3.13",
     "beautifulsoup4>=4.14",
-    "pymongo==4.17.*",
 ]
 
 [tool.uv]

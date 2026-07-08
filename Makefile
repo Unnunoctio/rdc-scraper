@@ -1,4 +1,4 @@
-.PHONY: sync export build deploy seed test lint fmt validate clean
+.PHONY: sync export build deploy init-db seed test lint fmt validate clean
 
 # Instala/actualiza el entorno del workspace desde uv.lock
 # --all-packages: incluye las deps de todos los miembros (apps con package=false)
@@ -8,7 +8,7 @@ sync:
 # Exporta un requirements.txt por artefacto (layer + funciones) desde el lockfile de uv.
 # SAM lo consume en el build. Se recorre cada miembro del workspace.
 export:
-	@for dir in src/shared src/spiders/* src/pipeline/*; do \
+	@for dir in src/layers/* src/spiders/* src/pipeline/*; do \
 		if [ -f "$$dir/pyproject.toml" ]; then \
 			echo "[export] $$dir/requirements.txt"; \
 			uv export --package "$$(basename $$dir)" --no-hashes --no-dev --no-emit-workspace \
@@ -23,6 +23,10 @@ build: export
 # Deploy (usa samconfig.toml)
 deploy: build
 	sam deploy
+
+# Crea colecciones e índices en Mongo (idempotente; no siembra datos)
+init-db:
+	uv run scripts/init_db.py --uri "$(MONGODB_URI)" --db "$(MONGODB_DB)"
 
 # Siembra la metadata de tiendas en Mongo (allowlist de `source`)
 seed:

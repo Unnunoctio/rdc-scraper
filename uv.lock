@@ -4,6 +4,7 @@ requires-python = ">=3.14"
 
 [manifest]
 members = [
+    "rdc-database",
     "rdc-pipeline-find-by-path",
     "rdc-pipeline-mark-out-of-stock",
     "rdc-pipeline-merge-results",
@@ -11,8 +12,8 @@ members = [
     "rdc-pipeline-send-report",
     "rdc-pipeline-sync-product",
     "rdc-scraper",
-    "rdc-shared",
     "rdc-spider-jumbo",
+    "rdc-utils",
 ]
 
 [[package]]
@@ -471,6 +472,17 @@ wheels = [
 ]
 
 [[package]]
+name = "rdc-database"
+version = "0.1.0"
+source = { virtual = "src/layers/database" }
+dependencies = [
+    { name = "pymongo" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pymongo", specifier = "==4.17.*" }]
+
+[[package]]
 name = "rdc-pipeline-find-by-path"
 version = "0.1.0"
 source = { virtual = "src/pipeline/find_by_path" }
@@ -546,23 +558,6 @@ dev = [
 ]
 
 [[package]]
-name = "rdc-shared"
-version = "0.1.0"
-source = { virtual = "src/shared" }
-dependencies = [
-    { name = "aiohttp" },
-    { name = "beautifulsoup4" },
-    { name = "pymongo" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "aiohttp", specifier = ">=3.13" },
-    { name = "beautifulsoup4", specifier = ">=4.14" },
-    { name = "pymongo", specifier = "==4.17.*" },
-]
-
-[[package]]
 name = "rdc-spider-jumbo"
 version = "0.1.0"
 source = { virtual = "src/spiders/jumbo" }
@@ -572,6 +567,21 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "aiohttp", specifier = ">=3.13" }]
+
+[[package]]
+name = "rdc-utils"
+version = "0.1.0"
+source = { virtual = "src/layers/utils" }
+dependencies = [
+    { name = "aiohttp" },
+    { name = "beautifulsoup4" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "aiohttp", specifier = ">=3.13" },
+    { name = "beautifulsoup4", specifier = ">=4.14" },
+]
 
 [[package]]
 name = "requests"
