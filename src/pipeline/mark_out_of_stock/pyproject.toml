@@ -1,0 +1,9 @@
+[project]
+name = "rdc-pipeline-mark-out-of-stock"
+version = "0.1.0"
+description = "MarkOutOfStock pipeline Lambda"
+requires-python = ">=3.14"
+dependencies = []
+
+[tool.uv]
+package = false
