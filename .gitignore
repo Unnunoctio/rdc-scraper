@@ -5,6 +5,9 @@
 .aws-sam/
 samconfig.toml
 
+# requirements.txt por artefacto: los genera `make export` desde uv.lock (regenerables)
+src/**/requirements.txt
+
 # Python
 __pycache__/
 *.py[cod]

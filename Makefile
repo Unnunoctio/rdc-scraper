@@ -6,13 +6,17 @@ sync:
 	uv sync --all-packages
 
 # Exporta un requirements.txt por artefacto (layer + funciones) desde el lockfile de uv.
-# SAM lo consume en el build. Se recorre cada miembro del workspace.
+# SAM lo consume en el build. Se recorre cada miembro del workspace; el nombre del paquete
+# se lee del `name` de su pyproject.toml (NO del basename del directorio: no coinciden,
+# p.ej. src/spiders/jumbo -> rdc-spider-jumbo). --no-emit-workspace excluye los miembros
+# del workspace (las layers ya proveen su propio código en runtime): solo deps de terceros.
 export:
-	@for dir in src/layers/* src/spiders/* src/pipeline/*; do \
+	@set -e; for dir in src/layers/* src/spiders/* src/pipeline/*; do \
 		if [ -f "$$dir/pyproject.toml" ]; then \
-			echo "[export] $$dir/requirements.txt"; \
-			uv export --package "$$(basename $$dir)" --no-hashes --no-dev --no-emit-workspace \
-				-o "$$dir/requirements.txt" 2>/dev/null || true; \
+			pkg=$$(grep -m1 '^name' "$$dir/pyproject.toml" | sed 's/.*= *//; s/"//g'); \
+			echo "[export] $$dir/requirements.txt ($$pkg)"; \
+			uv export --package "$$pkg" --no-hashes --no-dev --no-emit-workspace \
+				-o "$$dir/requirements.txt"; \
 		fi; \
 	done
 
