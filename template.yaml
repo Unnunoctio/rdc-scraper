@@ -63,6 +63,8 @@ Resources:
         - python3.14
       CompatibleArchitectures:
         - arm64
+    Metadata:
+      BuildMethod: makefile
 
   DatabaseLayer:
     Type: AWS::Serverless::LayerVersion
@@ -74,6 +76,85 @@ Resources:
         - python3.14
       CompatibleArchitectures:
         - arm64
+    Metadata:
+      BuildMethod: makefile
+
+  ########################################
+  # SPIDERS (una Lambda independiente por sitio; solo adjuntan UtilsLayer)
+  ########################################
+
+  SpiderJumboFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: RDCScraper-SpiderJumboFunction
+      Description: Scrapea Jumbo (PLP -> PDP) y sube el run JSON a S3.
+      CodeUri: src/spiders/jumbo/
+      Handler: handler.handler
+      Timeout: 300
+      MemorySize: 512
+      Layers:
+        - !Ref UtilsLayer
+      Environment:
+        Variables:
+          S3_PIPELINE_BUCKET: !Ref S3ImagesBucket
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: s3:PutObject
+              Resource: !Sub 'arn:aws:s3:::${S3ImagesBucket}/pipeline/*'
+
+  ########################################
+  # STEP FUNCTIONS — orquestador
+  #   Fase 2: solo ScrapeParallel (una rama por spider). MergeResults se encadena en Fase 3.
+  ########################################
+
+  OrchestratorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: RDCScraper-OrchestratorRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeSpiders
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !GetAtt SpiderJumboFunction.Arn
+
+  OrchestratorStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Name: RDCScraper-Orchestrator
+      Type: STANDARD
+      Role: !GetAtt OrchestratorRole.Arn
+      Definition:
+        Comment: RDC Scraper orchestrator (Fase 2 — solo ScrapeParallel)
+        StartAt: ScrapeParallel
+        States:
+          ScrapeParallel:
+            Type: Parallel
+            End: true
+            Branches:
+              - StartAt: InvokeSpiderJumbo
+                States:
+                  InvokeSpiderJumbo:
+                    Type: Task
+                    Resource: arn:aws:states:::lambda:invoke
+                    Parameters:
+                      FunctionName: !Ref SpiderJumboFunction
+                      Payload:
+                        execution_id.$: $$.Execution.Name
+                    ResultSelector:
+                      s3_key.$: $.Payload.s3_key
+                      count.$: $.Payload.count
+                    End: true
 
 Outputs:
   ProductImagesBucketName:
@@ -85,3 +166,9 @@ Outputs:
   DatabaseLayerArn:
     Description: Database Lambda Layer ARN
     Value: !Ref DatabaseLayer
+  SpiderJumboFunctionArn:
+    Description: Jumbo spider Lambda ARN
+    Value: !GetAtt SpiderJumboFunction.Arn
+  OrchestratorArn:
+    Description: Step Functions orchestrator ARN
+    Value: !Ref OrchestratorStateMachine

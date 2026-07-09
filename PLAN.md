@@ -493,11 +493,58 @@ spiders → `utils`; Lambdas que escriben en Mongo → `utils` + `database`.
 `base_spider.py` (abstracción eliminada).
 
 ### Fase 2 — Spider Jumbo + ScrapeParallel
-- `spiders/jumbo/config.py`: constantes (antes en el item de DynamoDB).
-- `spiders/jumbo/spider.py`: portar la lógica de `JumboSpider` (PLP paginado → slugs → PDP → format con extractores de abv/volumen/cantidad/packaging), **sin heredar de BaseSpider**; usa `rdc_utils.fetchers` y `create_product`.
-- `spiders/jumbo/handler.py`: corre el spider, sube JSON a `pipeline/runs/jumbo/<exec>.json`, devuelve `{s3_key, count}`.
-- State machine: estado `Parallel` con la rama `InvokeSpiderJumbo`.
-- Verificar en local con `scripts/run_spider_local.py jumbo`.
+Portar `JumboSpider` como **Lambda independiente** y crear la state machine con su primer estado
+(`Parallel`). El nudo del porte: el prototipo hereda de `BaseSpider` (eliminado en Fase 1), así que
+la maquinaria heredada se **pliega dentro del spider standalone** y la config sale de DynamoDB a código.
+
+**Paso 2.1 — `spiders/jumbo/config.py` (config en código):** portar el item que vivía en DynamoDB
+(`.deprecated/seed/spider_configs.json` → objeto `config`) a **constantes del módulo** (decisión §4:
+la config del spider vive en código, no es un dato). Valores reales (no los defaults del prototipo):
+- `SOURCE = "jumbo"`, `STORE = "jumboclj512"`, `PAGE_SIZE = 40`
+- `PRODUCT_LIST_URL = "https://bff.jumbo.cl/catalog/plp"`, `PRODUCT_DETAILS_URL = ".../pdp"`
+- `PRODUCT_URL = {"prefix": "https://www.jumbo.cl/", "postfix": "/p"}`
+- `CATEGORY_URLS = [".../cervezas", ".../destilados", ".../vinos"]`
+- `HEADERS = {"Apikey": "…", "Content-Type": "application/json"}`
+
+> El `info` de la tienda (`code/name/logo/url`) **no** va aquí: es seed de `infos` (Fase 4).
+> `config.py` describe solo *cómo* scrapear. La `Apikey` queda versionada en el repo (aceptado).
+
+**Paso 2.2 — `spiders/jumbo/spider.py` (portar sin `BaseSpider`):** inlinar en la clase las piezas
+que antes daba `BaseSpider` (`.deprecated/…/base_spider.py`): `__init__` (registra `JsonFetcher`,
+`self.session`; lee de `config.py`, **sin** `config` por parámetro), `fetch()`, `_get_all_pages()`,
+`_fetch_all_products()`, `_deduplicate()`, `_gather()`. Arreglar imports:
+`from base_spider import BaseSpider` → eliminar; `fetchers`/`standard_format` → `rdc_utils.*`.
+Conservar 1:1: `run()` (ya inyecta el paso PDP), `_build_*_body`, `_format_product` y los helpers
+puros `_extract_abv/_volume/_quantity/_packaging`, `_normalize`, `_spec_value`.
+
+**Paso 2.3 — `spiders/jumbo/handler.py`:** portar, pero la config sale de `config.py`, **no del
+`event`**. El evento del `Parallel` solo trae `execution_id` (= `$$.Execution.Name`). Mantener:
+instanciar spider → `asyncio.run(spider.run())` → subir a
+`s3://…/pipeline/runs/jumbo/{execution_id}.json` → devolver `{s3_key, count}`. Env: `S3_PIPELINE_BUCKET`.
+
+**Paso 2.4 — Empaquetado:** `pyproject.toml` de jumbo ya declara `aiohttp` (los fetchers vienen por
+la `UtilsLayer`, no como dep de la función). Añadir el target `make export` para la función jumbo.
+
+**Paso 2.5 — `template.yaml` · Lambda del spider:** `SpiderJumboFunction`
+(`FunctionName: RDCScraper-SpiderJumboFunction`, `python3.14`, arm64, `Handler: handler.handler`,
+`CodeUri: src/spiders/jumbo/`). `Layers: [!Ref UtilsLayer]` **solo** (no toca Mongo → sin
+`DatabaseLayer`). Env `S3_PIPELINE_BUCKET`; policy S3 `PutObject` sobre `rincon-del-curao/pipeline/*`.
+Timeout/memoria holgados (scraping I/O masivo).
+
+**Paso 2.6 — `template.yaml` · State machine con `Parallel`:** crear `RDCScraper-Orchestrator`
+(Standard) + `RDCScraper-OrchestratorRole`. Estado único por ahora: `ScrapeParallel` (`Type: Parallel`)
+con **una rama** `InvokeSpiderJumbo` (`lambda:invoke`), pasando `execution_id = $$.Execution.Name`.
+Sin estados aguas abajo todavía (la Fase 3 encadena `MergeResults`).
+> ⚠️ **Prerrequisito IAM:** al introducir la state machine aquí, el deploy user (`RDC-DeveloperUser`)
+> necesita `states:*` en su policy **antes** de desplegar la Fase 2 (§3 lo anticipaba para "Fase 3+").
+
+**Paso 2.7 — Ejecución local + tests:** `scripts/run_spider_local.py jumbo` (nuevo): corre el spider
+sin AWS ni S3, imprime N productos y valida la forma `ScrapedProduct`. Tests puros (sin red) de los
+extractores `_extract_abv/_volume/_quantity/_packaging` (funciones libres → `pytest`).
+
+**Paso 2.8 — Verificación:** `uv sync --all-packages` verde · `ruff check src/spiders/jumbo` limpio ·
+smoke local (`run_spider_local.py jumbo` devuelve productos con precio/url/source) · `sam validate` ·
+(opcional) `sam local invoke SpiderJumboFunction`.
 
 ### Fase 3 — MergeResults
 - Portar `merge_results/handler.py`: carga los S3 de las ramas del `Parallel`, dedup por url, agrupa por categoría, batches de 250.
