@@ -1,0 +1,521 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: RDC Scraper - Beverage price scraper for Chilean e-commerce (Python 3.14)
+
+# ---------------------------------------------------------------------------
+# Fase 1 — bucket de imágenes + dos Lambda Layers compartidas (utils, database).
+# Las Lambdas del pipeline y la state machine se agregan en fases posteriores.
+# Convención de nombres: RDCScraper-[Nombre] (ver PLAN.md §8.1).
+# ---------------------------------------------------------------------------
+
+Parameters:
+  S3ImagesBucket:
+    Type: String
+    Description: S3 bucket name for product images
+    Default: rincon-del-curao
+  MongoDbUri:
+    Type: String
+    Description: MongoDB Atlas connection URI
+    NoEcho: true
+  MongoDbDatabase:
+    Type: String
+    Description: MongoDB database name (dev | prod)
+  DrinksApiUrl:
+    Type: String
+    Description: RDC Drinks API base URL
+  DrinksApiKey:
+    Type: String
+    Description: RDC Drinks API internal key
+    NoEcho: true
+  ResendApiKey:
+    Type: String
+    Description: Resend API key (envío del reporte de unmatched)
+    NoEcho: true
+  EmailSender:
+    Type: String
+    Description: Remitente verificado en Resend
+  EmailRecipient:
+    Type: String
+    Description: Destinatario del reporte de unmatched
+
+Globals:
+  Function:
+    Runtime: python3.14
+    Architectures:
+      - x86_64
+
+Resources:
+  ########################################
+  # S3 BUCKET - PRODUCT IMAGES
+  ########################################
+
+  ProductImagesBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref S3ImagesBucket
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      # Expira los intermedios del pipeline (batches/unmatched) a los 7 días: en una corrida
+      # normal se borran solos, así que esto solo limpia los huérfanos que dejan corridas fallidas.
+      # Acotado al prefijo `pipeline/` — nunca toca `images/` (permanente). Expiración = costo $0.
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpirePipelineIntermediates
+            Status: Enabled
+            Prefix: pipeline/
+            ExpirationInDays: 7
+
+  ProductImagesBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ProductImagesBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: s3:GetObject
+            Resource: !Sub 'arn:aws:s3:::${S3ImagesBucket}/images/*'
+
+  ########################################
+  # SHARED LAMBDA LAYERS
+  #   utils     → fetchers, standard_format, naming, mappings (aiohttp, bs4)
+  #   database  → acceso a Mongo Atlas (pymongo[srv]); depende de utils
+  ########################################
+
+  UtilsLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: RDCScraper-UtilsLayer
+      Description: Utils (fetchers, standard_format, naming, mappings)
+      ContentUri: src/layers/utils/
+      CompatibleRuntimes:
+        - python3.14
+      CompatibleArchitectures:
+        - x86_64
+    Metadata:
+      BuildMethod: makefile
+
+  DatabaseLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: RDCScraper-DatabaseLayer
+      Description: MongoDB Atlas access (client, infos, products, price_logs). Requires UtilsLayer.
+      ContentUri: src/layers/database/
+      CompatibleRuntimes:
+        - python3.14
+      CompatibleArchitectures:
+        - x86_64
+    Metadata:
+      BuildMethod: makefile
+
+  ########################################
+  # SPIDERS (una Lambda independiente por sitio; solo adjuntan UtilsLayer)
+  ########################################
+
+  SpiderJumboFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: RDCScraper-SpiderJumboFunction
+      Description: Scrapea Jumbo (PLP -> PDP) y sube el run JSON a S3.
+      CodeUri: src/spiders/jumbo/
+      Handler: handler.handler
+      Timeout: 300
+      MemorySize: 512
+      Layers:
+        - !Ref UtilsLayer
+      Environment:
+        Variables:
+          S3_PIPELINE_BUCKET: !Ref S3ImagesBucket
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: s3:PutObject
+              Resource: !Sub 'arn:aws:s3:::${S3ImagesBucket}/pipeline/*'
+
+  ########################################
+  # PIPELINE — MergeResults
+  #   Carga los runs del Parallel, dedup por url, agrupa por categoria, batches de 250.
+  #   Solo stdlib + boto3 (runtime) -> sin layers.
+  ########################################
+
+  MergeResultsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: RDCScraper-PipelineMergeResultsFunction
+      Description: Consolida los runs de spiders, dedup por url, agrupa por categoria y escribe batches en S3.
+      CodeUri: src/pipeline/merge_results/
+      Handler: handler.handler
+      Timeout: 120
+      MemorySize: 512
+      Environment:
+        Variables:
+          S3_PIPELINE_BUCKET: !Ref S3ImagesBucket
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:PutObject
+                - s3:DeleteObject
+              Resource: !Sub 'arn:aws:s3:::${S3ImagesBucket}/pipeline/*'
+
+  ########################################
+  # PIPELINE — SyncPipeline (Map: FindByPath -> SearchDrinks -> SyncProduct)
+  #   FindByPath  : match por websites.path, actualiza precio (Utils+Database).
+  #   SearchDrinks: consulta la Drinks API los remaining (Utils, aiohttp).
+  #   SyncProduct : add_website | create_product + imagen WebP a S3 (Utils+Database).
+  ########################################
+
+  FindByPathFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: RDCScraper-PipelineFindByPathFunction
+      Description: Match por websites.path; actualiza precio/inStock; enruta el resto a SearchDrinks.
+      CodeUri: src/pipeline/find_by_path/
+      Handler: handler.handler
+      Timeout: 300
+      MemorySize: 512
+      Layers:
+        - !Ref UtilsLayer
+        - !Ref DatabaseLayer
+      Environment:
+        Variables:
+          MONGODB_URI: !Ref MongoDbUri
+          MONGODB_DB: !Ref MongoDbDatabase
+          S3_PIPELINE_BUCKET: !Ref S3ImagesBucket
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:DeleteObject
+              Resource: !Sub 'arn:aws:s3:::${S3ImagesBucket}/pipeline/*'
+
+  SearchDrinksFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: RDCScraper-PipelineSearchDrinksFunction
+      Description: Busca los remaining en la RDC Drinks API y elige el mejor match por nombre.
+      CodeUri: src/pipeline/search_drinks/
+      Handler: handler.handler
+      Timeout: 120
+      MemorySize: 512
+      Layers:
+        - !Ref UtilsLayer
+      Environment:
+        Variables:
+          DRINKS_API_URL: !Ref DrinksApiUrl
+          DRINKS_API_KEY: !Ref DrinksApiKey
+
+  SyncProductFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: RDCScraper-PipelineSyncProductFunction
+      Description: add_website o create_product (+imagen WebP a S3); gate de allowlist por info.
+      CodeUri: src/pipeline/sync_product/
+      Handler: handler.handler
+      Timeout: 300
+      MemorySize: 512
+      Layers:
+        - !Ref UtilsLayer
+        - !Ref DatabaseLayer
+      Environment:
+        Variables:
+          MONGODB_URI: !Ref MongoDbUri
+          MONGODB_DB: !Ref MongoDbDatabase
+          S3_IMAGES_BUCKET: !Ref S3ImagesBucket
+          S3_PIPELINE_BUCKET: !Ref S3ImagesBucket
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: s3:PutObject
+              Resource:
+                - !Sub 'arn:aws:s3:::${S3ImagesBucket}/images/*'
+                - !Sub 'arn:aws:s3:::${S3ImagesBucket}/pipeline/*'
+
+  ########################################
+  # PIPELINE — cierre (MarkOutOfStock -> SendReport)
+  #   MarkOutOfStock: websites con lastUpdate != sync_token -> inStock:false (Utils+Database).
+  #   SendReport    : junta unmatched de S3 -> Excel -> email (Resend); sin layers.
+  ########################################
+
+  MarkOutOfStockFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: RDCScraper-PipelineMarkOutOfStockFunction
+      Description: Marca out-of-stock los websites no vistos en la corrida (lastUpdate != sync_token).
+      CodeUri: src/pipeline/mark_out_of_stock/
+      Handler: handler.handler
+      Timeout: 120
+      MemorySize: 512
+      Layers:
+        - !Ref UtilsLayer
+        - !Ref DatabaseLayer
+      Environment:
+        Variables:
+          MONGODB_URI: !Ref MongoDbUri
+          MONGODB_DB: !Ref MongoDbDatabase
+
+  SendReportFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: RDCScraper-PipelineSendReportFunction
+      Description: Junta los unmatched de S3, genera un Excel y lo envía por email (Resend).
+      CodeUri: src/pipeline/send_report/
+      Handler: handler.handler
+      Timeout: 120
+      MemorySize: 512
+      Environment:
+        Variables:
+          RESEND_API_KEY: !Ref ResendApiKey
+          EMAIL_SENDER: !Ref EmailSender
+          EMAIL_RECIPIENT: !Ref EmailRecipient
+          S3_PIPELINE_BUCKET: !Ref S3ImagesBucket
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: s3:ListBucket
+              Resource: !Sub 'arn:aws:s3:::${S3ImagesBucket}'
+              Condition:
+                StringLike:
+                  s3:prefix: 'pipeline/unmatched/*'
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:DeleteObject
+              Resource: !Sub 'arn:aws:s3:::${S3ImagesBucket}/pipeline/unmatched/*'
+
+  ########################################
+  # STEP FUNCTIONS — orquestador
+  #   Fase 5: ScrapeParallel -> MergeResults -> SyncPipeline -> MarkOutOfStock -> SendReport.
+  ########################################
+
+  OrchestratorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: RDCScraper-OrchestratorRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeSpiders
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource:
+                  - !GetAtt SpiderJumboFunction.Arn
+                  - !GetAtt MergeResultsFunction.Arn
+                  - !GetAtt FindByPathFunction.Arn
+                  - !GetAtt SearchDrinksFunction.Arn
+                  - !GetAtt SyncProductFunction.Arn
+                  - !GetAtt MarkOutOfStockFunction.Arn
+                  - !GetAtt SendReportFunction.Arn
+
+  OrchestratorStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Name: RDCScraper-Orchestrator
+      Type: STANDARD
+      Role: !GetAtt OrchestratorRole.Arn
+      Definition:
+        Comment: RDC Scraper orchestrator (Fase 5 — ScrapeParallel -> MergeResults -> SyncPipeline -> MarkOutOfStock -> SendReport)
+        StartAt: ScrapeParallel
+        States:
+          ScrapeParallel:
+            Type: Parallel
+            ResultPath: $.s3_keys
+            Next: MergeResults
+            Branches:
+              - StartAt: InvokeSpiderJumbo
+                States:
+                  InvokeSpiderJumbo:
+                    Type: Task
+                    Resource: arn:aws:states:::lambda:invoke
+                    Parameters:
+                      FunctionName: !Ref SpiderJumboFunction
+                      Payload:
+                        execution_id.$: $$.Execution.Name
+                    ResultSelector:
+                      s3_key.$: $.Payload.s3_key
+                      count.$: $.Payload.count
+                    End: true
+          MergeResults:
+            Type: Task
+            Resource: arn:aws:states:::lambda:invoke
+            Parameters:
+              FunctionName: !Ref MergeResultsFunction
+              Payload:
+                s3_keys.$: $.s3_keys
+                execution_id.$: $$.Execution.Name
+            ResultSelector:
+              batches.$: $.Payload
+            ResultPath: $
+            Next: SyncPipeline
+          SyncPipeline:
+            Type: Map
+            ItemsPath: $.batches
+            MaxConcurrency: 10
+            ItemSelector:
+              s3_key.$: $$.Map.Item.Value.s3_key
+              category.$: $$.Map.Item.Value.category
+              sync_token.$: $$.Execution.StartTime
+            ItemProcessor:
+              ProcessorConfig:
+                Mode: INLINE
+              StartAt: FindByPath
+              States:
+                FindByPath:
+                  Type: Task
+                  Resource: arn:aws:states:::lambda:invoke
+                  Parameters:
+                    FunctionName: !Ref FindByPathFunction
+                    Payload:
+                      s3_key.$: $.s3_key
+                      category.$: $.category
+                      sync_token.$: $.sync_token
+                  ResultSelector:
+                    remaining.$: $.Payload.remaining
+                    sync_token.$: $.Payload.sync_token
+                    category.$: $.Payload.category
+                  Next: SearchDrinks
+                SearchDrinks:
+                  Type: Task
+                  Resource: arn:aws:states:::lambda:invoke
+                  Parameters:
+                    FunctionName: !Ref SearchDrinksFunction
+                    Payload:
+                      remaining.$: $.remaining
+                      sync_token.$: $.sync_token
+                      category.$: $.category
+                  ResultSelector:
+                    matched.$: $.Payload.matched
+                    unmatched.$: $.Payload.unmatched
+                    sync_token.$: $.Payload.sync_token
+                    category.$: $.Payload.category
+                  Next: SyncProduct
+                SyncProduct:
+                  Type: Task
+                  Resource: arn:aws:states:::lambda:invoke
+                  Parameters:
+                    FunctionName: !Ref SyncProductFunction
+                    Payload:
+                      matched.$: $.matched
+                      unmatched.$: $.unmatched
+                      sync_token.$: $.sync_token
+                      category.$: $.category
+                      execution_id.$: $$.Execution.Name
+                  ResultSelector:
+                    sync_token.$: $.Payload.sync_token
+                    category.$: $.Payload.category
+                    unmatched_count.$: $.Payload.unmatched_count
+                    unmatched_key.$: $.Payload.unmatched_key
+                  End: true
+            Next: MarkOutOfStock
+          MarkOutOfStock:
+            Type: Task
+            Resource: arn:aws:states:::lambda:invoke
+            Parameters:
+              FunctionName: !Ref MarkOutOfStockFunction
+              Payload:
+                sync_token.$: $$.Execution.StartTime
+            ResultSelector:
+              marked_out_of_stock.$: $.Payload.marked_out_of_stock
+            ResultPath: $
+            Next: SendReport
+          SendReport:
+            Type: Task
+            Resource: arn:aws:states:::lambda:invoke
+            Parameters:
+              FunctionName: !Ref SendReportFunction
+              Payload:
+                execution_id.$: $$.Execution.Name
+                start_time.$: $$.Execution.StartTime
+            ResultSelector:
+              sent.$: $.Payload.sent
+              count.$: $.Payload.count
+            ResultPath: $
+            End: true
+
+  ########################################
+  # SCHEDULING — EventBridge Scheduler (Fase 6)
+  #   3 corridas/día a las 10:00 / 14:00 / 18:00 hora de Chile (America/Santiago, con DST).
+  #   El envío del reporte se gatea dentro de SendReport (solo viernes 14:00).
+  ########################################
+
+  SchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: RDCScraper-SchedulerRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StartOrchestrator
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: states:StartExecution
+                Resource: !Ref OrchestratorStateMachine
+
+  ScheduleTrigger:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: RDCScraper-ScheduleTrigger
+      Description: Dispara el pipeline a las 10:00, 14:00 y 18:00 hora de Chile.
+      ScheduleExpression: cron(0 10,14,18 * * ? *)
+      ScheduleExpressionTimezone: America/Santiago
+      FlexibleTimeWindow:
+        Mode: 'OFF'
+      Target:
+        Arn: !Ref OrchestratorStateMachine
+        RoleArn: !GetAtt SchedulerRole.Arn
+
+Outputs:
+  ProductImagesBucketName:
+    Description: S3 bucket for product images
+    Value: !Ref ProductImagesBucket
+  UtilsLayerArn:
+    Description: Utils Lambda Layer ARN
+    Value: !Ref UtilsLayer
+  DatabaseLayerArn:
+    Description: Database Lambda Layer ARN
+    Value: !Ref DatabaseLayer
+  SpiderJumboFunctionArn:
+    Description: Jumbo spider Lambda ARN
+    Value: !GetAtt SpiderJumboFunction.Arn
+  MergeResultsFunctionArn:
+    Description: MergeResults pipeline Lambda ARN
+    Value: !GetAtt MergeResultsFunction.Arn
+  FindByPathFunctionArn:
+    Description: FindByPath pipeline Lambda ARN
+    Value: !GetAtt FindByPathFunction.Arn
+  SearchDrinksFunctionArn:
+    Description: SearchDrinks pipeline Lambda ARN
+    Value: !GetAtt SearchDrinksFunction.Arn
+  SyncProductFunctionArn:
+    Description: SyncProduct pipeline Lambda ARN
+    Value: !GetAtt SyncProductFunction.Arn
+  MarkOutOfStockFunctionArn:
+    Description: MarkOutOfStock pipeline Lambda ARN
+    Value: !GetAtt MarkOutOfStockFunction.Arn
+  SendReportFunctionArn:
+    Description: SendReport pipeline Lambda ARN
+    Value: !GetAtt SendReportFunction.Arn
+  OrchestratorArn:
+    Description: Step Functions orchestrator ARN
+    Value: !Ref OrchestratorStateMachine

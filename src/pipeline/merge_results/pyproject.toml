@@ -1,0 +1,9 @@
+[project]
+name = "rdc-pipeline-merge-results"
+version = "0.1.0"
+description = "MergeResults pipeline Lambda"
+requires-python = ">=3.14"
+dependencies = []
+
+[tool.uv]
+package = false
