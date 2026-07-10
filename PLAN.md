@@ -680,9 +680,13 @@ State machine resultante: `ScrapeParallel → MergeResults → SyncPipeline → 
   el orquestador, con `RDCScraper-SchedulerRole`. El **envío del reporte** se gatea dentro de
   SendReport (solo viernes 14:00 CL), no en el schedule. **IAM:** el deploy user necesitó
   **`scheduler:*`** (se añadió como inline policy `RDCSchedulerAccess`; `iam:PassRole` ya lo tenía).
-- **Hardening (pendiente):** revisar timeouts/memoria por Lambda, políticas IAM mínimas, `NoEcho` en
-  secretos; alarmas CloudWatch sobre fallos de la state machine; (opcional) lifecycle S3 sobre
-  `pipeline/*` para expirar intermedios huérfanos.
+- **Lifecycle S3 (hecho — desplegado 2026-07-10):** regla `ExpirePipelineIntermediates` en el bucket,
+  acotada al prefijo `pipeline/` (nunca `images/`), expira a los **7 días**. En una corrida normal los
+  intermedios (batches/unmatched) se borran solos; esto limpia solo los huérfanos de corridas fallidas.
+  Costo $0 (la expiración no tiene cargo de request).
+- **Hardening (pendiente):** revisar timeouts/memoria por Lambda, políticas IAM mínimas (estrechar
+  prefijos S3); `NoEcho` en secretos **ya está**; alarmas CloudWatch sobre fallos de la state machine
+  (métrica `ExecutionsFailed` → SNS email, $0 dentro del free tier); retención de logs de Lambda.
 
 ---
 

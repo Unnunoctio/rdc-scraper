@@ -58,6 +58,15 @@ Resources:
         BlockPublicPolicy: false
         IgnorePublicAcls: false
         RestrictPublicBuckets: false
+      # Expira los intermedios del pipeline (batches/unmatched) a los 7 días: en una corrida
+      # normal se borran solos, así que esto solo limpia los huérfanos que dejan corridas fallidas.
+      # Acotado al prefijo `pipeline/` — nunca toca `images/` (permanente). Expiración = costo $0.
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpirePipelineIntermediates
+            Status: Enabled
+            Prefix: pipeline/
+            ExpirationInDays: 7
 
   ProductImagesBucketPolicy:
     Type: AWS::S3::BucketPolicy
