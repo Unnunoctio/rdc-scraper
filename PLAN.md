@@ -618,14 +618,71 @@ deploy E2E: ejecución `SUCCEEDED`, **1741 productos únicos → 11 batches**
    update_price +priceLog, unmatched→S3) e idempotencia. Casos aún no ejercidos → **§10.1**.
 
 ### Fase 5 — MarkOutOfStock + SendReport
-- `mark_out_of_stock`: `update_many` con `array_filters` sobre `lastUpdate ≠ sync_token`.
-- `send_report`: junta `unmatched`, genera Excel (openpyxl), envía email con adjunto (Resend).
-- State machine: `SyncPipeline → MarkOutOfStock → SendReport (End)`.
+Cerrar el pipeline: marcar out-of-stock lo no visto en la corrida y enviar el reporte de `unmatched`.
+
+**Punto de partida (ya hecho en fases previas):** `rdc_database.mark_out_of_stock()` portada y
+exportada (`products.py`); `pyproject.toml` de ambas Lambdas y su membresía en el workspace uv;
+`uv.lock` con `openpyxl`/`resend`. **IAM deploy-user:** sin permisos nuevos (ya hay `states:*`,
+`lambda:*`; Resend es externo, no toca IAM).
+
+**Paso 5.1 — `mark_out_of_stock/handler.py`.** Adaptar el prototipo a la layer (no 1:1): en vez del
+`db.py` local + `loop` propio, usar `rdc_database` (`db.run(db.mark_out_of_stock(db.get_db(),
+sync_token))`), consistente con `find_by_path`/`sync_product`. Input `{sync_token}` → output
+`{marked_out_of_stock: int}`. Layers Utils+Database; env `MONGODB_URI`/`MONGODB_DB`.
+
+**Paso 5.2 — `send_report/handler.py` (rework, NO port 1:1).** Cambio de fondo vs. prototipo: los
+`unmatched` **ya no viajan inline** (§7 Fase 4.5) — se recolectan por **glob de S3**
+`pipeline/unmatched/<execution_id>/` (`list_objects_v2` paginado → `get_object` → `json.loads` →
+extend) y **se borran tras leerlos** (patrón de `merge_results`). Input `{execution_id}`. Excel con
+`openpyxl`, columnas **alineadas al `ScrapedProduct` real** (`price` = sin descuento, `best_price` =
+final; el prototipo usaba `original_price` inexistente). Envío por Resend; sin `unmatched` → skip.
+**Sin layers** (`openpyxl`+`resend` como deps de la función). Env `RESEND_API_KEY`/`EMAIL_SENDER`/
+`EMAIL_RECIPIENT` + `S3_PIPELINE_BUCKET`.
+
+**Paso 5.3 — Params + funciones en `template.yaml`.** Nuevos params `ResendApiKey` (NoEcho),
+`EmailSender`, `EmailRecipient`. `MarkOutOfStockFunction`
+(`RDCScraper-PipelineMarkOutOfStockFunction`, Utils+Database, env Mongo, sin policy S3).
+`SendReportFunction` (`RDCScraper-PipelineSendReportFunction`, sin layers, env Resend/Email +
+`S3_PIPELINE_BUCKET`, policy S3 `ListBucket`+`GetObject`+`DeleteObject` sobre `pipeline/unmatched/*`).
+
+**Paso 5.4 — IAM role + state machine.** Añadir ambos ARNs a `lambda:InvokeFunction` del
+`OrchestratorRole`. Encadenar: Map `SyncPipeline` `End:true` → `Next: MarkOutOfStock` (Payload
+`sync_token.$: $$.Execution.StartTime`, reinyectado — idéntico al del Map) → `Next: SendReport`
+(Payload `execution_id.$: $$.Execution.Name`) → `End:true`. `Comment` a Fase 5.
+
+**Paso 5.5 — `samconfig.toml` + `.example`.** Añadir los 3 overrides. Prerrequisito externo: cuenta
+Resend con remitente verificado (`EMAIL_SENDER`).
+
+**Paso 5.6 — Tests.** `test_send_report.py`: `_build_excel` puro + agregación/glob con stub `boto3`
+(patrón `importlib`+stub de `merge_results`, evita colisión de `handler.py`). MarkOutOfStock es un
+solo `update_many` → sin test puro útil.
+
+**Paso 5.7 — Verificación + deploy E2E.** `ruff` + `pytest` + `make export` + `sam validate --lint`;
+deploy; E2E `SUCCEEDED` → en Mongo, `websites` con `lastUpdate ≠ sync_token` quedan `inStock:false`/
+precios 0, y email recibido con Excel. Habilita el **caso 3 de §10.1** (reactivación `inStock`).
+
+State machine resultante: `ScrapeParallel → MergeResults → SyncPipeline → MarkOutOfStock → SendReport`.
+
+> **Ajustes posteriores al reporte (SendReport):** (a) el Excel incluye la columna **Envase**
+> (`packaging`); (b) se envía **un adjunto Excel por categoría**, cada uno ordenado por **marca +
+> nombre**; (c) el email se **gatea**: solo se manda en la corrida del **viernes 14:00 hora de Chile**
+> (`America/Santiago`, con DST vía `zoneinfo`+`tzdata`) — en cualquier otra corrida los `unmatched` se
+> recolectan y **borran** sin enviar (si el envío falla, se conservan en S3 para reintento). SendReport
+> recibe `start_time = $$.Execution.StartTime` para decidir el gate. Remitente con display name
+> `RDC Scraper <onboarding@resend.dev>` (en `samconfig` el valor con espacios va **entre comillas
+> dobles internas**, si no SAM lo trunca en el primer espacio).
 
 ### Fase 6 — Scheduling + hardening
-- EventBridge Rule `cron(0 10,18 * * ? *)` → `StartExecution`.
-- Revisar timeouts/memoria por Lambda, políticas IAM mínimas, `NoEcho` en secretos.
-- Alarmas CloudWatch sobre fallos de la state machine.
+- **Scheduling (hecho — desplegado 2026-07-10):** se usa **EventBridge Scheduler**
+  (`AWS::Scheduler::Schedule`), no la Rule clásica, para respetar **hora de Chile con DST** vía
+  `ScheduleExpressionTimezone: America/Santiago`. `RDCScraper-ScheduleTrigger`:
+  `cron(0 10,14,18 * * ? *)` → 3 corridas/día (10:00/14:00/18:00 CL) → `states:StartExecution` sobre
+  el orquestador, con `RDCScraper-SchedulerRole`. El **envío del reporte** se gatea dentro de
+  SendReport (solo viernes 14:00 CL), no en el schedule. **IAM:** el deploy user necesitó
+  **`scheduler:*`** (se añadió como inline policy `RDCSchedulerAccess`; `iam:PassRole` ya lo tenía).
+- **Hardening (pendiente):** revisar timeouts/memoria por Lambda, políticas IAM mínimas, `NoEcho` en
+  secretos; alarmas CloudWatch sobre fallos de la state machine; (opcional) lifecycle S3 sobre
+  `pipeline/*` para expirar intermedios huérfanos.
 
 ---
 
