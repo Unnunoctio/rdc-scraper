@@ -22,11 +22,35 @@ tiendas en paralelo, consolida los resultados, los sincroniza contra la base de 
 El pipeline es una máquina de estados de Step Functions (`RDCScraper-Orchestrator`) con cinco
 etapas. La entrada la dispara EventBridge Scheduler; cada etapa es una (o varias) Lambda.
 
-```
-┌──────────────┐   ┌──────────────┐   ┌─────────────────────────────────────┐   ┌────────────────┐   ┌────────────┐
-│ ScrapeParallel│─▶│ MergeResults │─▶│ SyncPipeline (Map)                  │─▶│ MarkOutOfStock │─▶│ SendReport │
-│ (Parallel)    │  │              │  │ FindByPath → SearchDrinks → SyncProduct│  │                │  │            │
-└──────────────┘   └──────────────┘   └─────────────────────────────────────┘   └────────────────┘   └────────────┘
+```mermaid
+flowchart LR
+    sched(["⏰ EventBridge Scheduler<br/>10 / 14 / 18 h Chile"]) --> SP
+
+    subgraph SP["ScrapeParallel · Parallel"]
+        jumbo["Spider Jumbo<br/>PLP → PDP → S3"]
+    end
+
+    SP --> MR["MergeResults<br/>dedup + batches de 250"]
+    MR --> MAP
+
+    subgraph MAP["SyncPipeline · Map (concurrencia 10)"]
+        direction LR
+        FBP["FindByPath"] --> SD["SearchDrinks"] --> SPr["SyncProduct"]
+    end
+
+    MAP --> MOOS["MarkOutOfStock"]
+    MOOS --> RPT["SendReport<br/>Excel + email (viernes 14 h)"]
+
+    s3[("S3 · rincon-del-curao")]
+    mongo[("MongoDB Atlas")]
+
+    jumbo -.-> s3
+    MR -.-> s3
+    FBP -.-> mongo
+    SPr -.-> mongo
+    SPr -.-> s3
+    MOOS -.-> mongo
+    RPT -.-> s3
 ```
 
 1. **ScrapeParallel** — lanza todos los spiders en paralelo (una rama por spider). Cada spider
