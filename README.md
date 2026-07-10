@@ -23,7 +23,7 @@ El pipeline es una máquina de estados de Step Functions (`RDCScraper-Orchestrat
 etapas. La entrada la dispara EventBridge Scheduler; cada etapa es una (o varias) Lambda.
 
 ```mermaid
-flowchart LR
+flowchart TB
     sched(["⏰ EventBridge Scheduler<br/>10 / 14 / 18 h Chile"]) --> SP
 
     subgraph SP["ScrapeParallel · Parallel"]
