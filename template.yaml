@@ -104,8 +104,35 @@ Resources:
               Resource: !Sub 'arn:aws:s3:::${S3ImagesBucket}/pipeline/*'
 
   ########################################
+  # PIPELINE — MergeResults
+  #   Carga los runs del Parallel, dedup por url, agrupa por categoria, batches de 250.
+  #   Solo stdlib + boto3 (runtime) -> sin layers.
+  ########################################
+
+  MergeResultsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: RDCScraper-PipelineMergeResultsFunction
+      Description: Consolida los runs de spiders, dedup por url, agrupa por categoria y escribe batches en S3.
+      CodeUri: src/pipeline/merge_results/
+      Handler: handler.handler
+      Timeout: 120
+      MemorySize: 512
+      Environment:
+        Variables:
+          S3_PIPELINE_BUCKET: !Ref S3ImagesBucket
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:PutObject
+                - s3:DeleteObject
+              Resource: !Sub 'arn:aws:s3:::${S3ImagesBucket}/pipeline/*'
+
+  ########################################
   # STEP FUNCTIONS — orquestador
-  #   Fase 2: solo ScrapeParallel (una rama por spider). MergeResults se encadena en Fase 3.
+  #   Fase 3: ScrapeParallel -> MergeResults.
   ########################################
 
   OrchestratorRole:
@@ -126,7 +153,9 @@ Resources:
             Statement:
               - Effect: Allow
                 Action: lambda:InvokeFunction
-                Resource: !GetAtt SpiderJumboFunction.Arn
+                Resource:
+                  - !GetAtt SpiderJumboFunction.Arn
+                  - !GetAtt MergeResultsFunction.Arn
 
   OrchestratorStateMachine:
     Type: AWS::Serverless::StateMachine
@@ -135,12 +164,13 @@ Resources:
       Type: STANDARD
       Role: !GetAtt OrchestratorRole.Arn
       Definition:
-        Comment: RDC Scraper orchestrator (Fase 2 — solo ScrapeParallel)
+        Comment: RDC Scraper orchestrator (Fase 3 — ScrapeParallel -> MergeResults)
         StartAt: ScrapeParallel
         States:
           ScrapeParallel:
             Type: Parallel
-            End: true
+            ResultPath: $.s3_keys
+            Next: MergeResults
             Branches:
               - StartAt: InvokeSpiderJumbo
                 States:
@@ -155,6 +185,17 @@ Resources:
                       s3_key.$: $.Payload.s3_key
                       count.$: $.Payload.count
                     End: true
+          MergeResults:
+            Type: Task
+            Resource: arn:aws:states:::lambda:invoke
+            Parameters:
+              FunctionName: !Ref MergeResultsFunction
+              Payload:
+                s3_keys.$: $.s3_keys
+                execution_id.$: $$.Execution.Name
+            ResultSelector:
+              batches.$: $.Payload
+            End: true
 
 Outputs:
   ProductImagesBucketName:
@@ -169,6 +210,9 @@ Outputs:
   SpiderJumboFunctionArn:
     Description: Jumbo spider Lambda ARN
     Value: !GetAtt SpiderJumboFunction.Arn
+  MergeResultsFunctionArn:
+    Description: MergeResults pipeline Lambda ARN
+    Value: !GetAtt MergeResultsFunction.Arn
   OrchestratorArn:
     Description: Step Functions orchestrator ARN
     Value: !Ref OrchestratorStateMachine

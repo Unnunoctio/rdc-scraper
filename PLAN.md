@@ -547,8 +547,43 @@ smoke local (`run_spider_local.py jumbo` devuelve productos con precio/url/sourc
 (opcional) `sam local invoke SpiderJumboFunction`.
 
 ### Fase 3 — MergeResults
-- Portar `merge_results/handler.py`: carga los S3 de las ramas del `Parallel`, dedup por url, agrupa por categoría, batches de 250.
-- State machine: `ScrapeParallel → MergeResults`.
+Encadenar `ScrapeParallel → MergeResults`: la Lambda que consolida las salidas del `Parallel`,
+deduplica por `url`, agrupa por categoría y escribe batches de 250 en S3.
+
+**Paso 3.1 — `pipeline/merge_results/handler.py` (portar 1:1):** desde
+`.deprecated/…/merge_results/handler.py`. Contrato:
+- Input: `{ s3_keys: [{s3_key, count}], execution_id }`.
+- Flujo: `load_spider_results` descarga cada run del `Parallel` **y lo borra tras leerlo**
+  (`delete_object`) → `deduplicate` por `url` (descarta sin `url`) → `group_by_category` →
+  `write_batches` (`BATCH_SIZE = 250`) en `pipeline/batches/<exec>/<i>.json`.
+- Output: `[{ s3_key, category, count }]`.
+> Sin deps ni layers: solo stdlib + `boto3` (runtime). `S3_PIPELINE_BUCKET` por env.
+
+**Paso 3.2 — Empaquetado:** `pyproject.toml` con `dependencies = []`; `make export` ya recorre
+`src/pipeline/*` → `requirements.txt` vacío se regenera solo. Nada nativo → no requiere layers.
+
+**Paso 3.3 — `template.yaml` · Lambda MergeResults:** `MergeResultsFunction`
+(`FunctionName: RDCScraper-PipelineMergeResultsFunction`, `CodeUri: src/pipeline/merge_results/`,
+`Handler: handler.handler`, **sin layers**). Env `S3_PIPELINE_BUCKET`. Policy S3 sobre `pipeline/*`
+con **`GetObject` + `PutObject` + `DeleteObject`** (borra los runs tras leerlos).
+
+**Paso 3.4 — `template.yaml` · encadenar la state machine:**
+- `ScrapeParallel`: `End: true` → `Next: MergeResults` con `ResultPath: $.s3_keys` (el array del
+  `Parallel` se guarda ahí).
+- Nuevo estado `MergeResults` (`Task`, `lambda:invoke`) con `Parameters`: `s3_keys.$: $.s3_keys` y
+  `execution_id.$: $$.Execution.Name` (**reinyectado**: el output del `Parallel` no lo propaga solo).
+- `OrchestratorRole`: añadir `lambda:InvokeFunction` sobre `MergeResultsFunction.Arn`.
+
+**Paso 3.5 — Tests:** `tests/test_merge_results.py` — funciones puras `deduplicate` +
+`group_by_category` (sin red). El handler hace `import boto3`/`boto3.client("s3")` a nivel de módulo
+(boto3 lo provee el runtime, **no** el venv de dev) → se carga vía `importlib` con un stub de boto3 en
+`sys.modules` (evita además colisión con el `handler.py` del spider Jumbo).
+
+**Paso 3.6 — Verificación:** `ruff` limpio · `pytest` verde · `make export` · `sam validate --lint` ·
+deploy E2E: ejecución `SUCCEEDED`, **1741 productos únicos → 11 batches**
+(Cervezas/Destilados/Vinos/Espumantes/Hogar); run de jumbo auto-borrado.
+> **Nota (build):** el stack se pasó a **x86_64** en esta fase (ver §1) para un `sam build` nativo
+> sin QEMU. Deploy en background requiere `confirm_changeset = false` en `samconfig.toml`.
 
 ### Fase 4 — Seed de `infos` + SyncPipeline (Map: FindByPath → SearchDrinks → SyncProduct)
 - `seed/infos.json` + `scripts/seed_infos.py`: sembrar tiendas en Mongo (upsert idempotente por `code`). Es el **allowlist** de `source` válidos (ver §6.1).
