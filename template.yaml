@@ -18,7 +18,7 @@ Globals:
   Function:
     Runtime: python3.14
     Architectures:
-      - arm64
+      - x86_64
 
 Resources:
   ########################################
@@ -62,7 +62,7 @@ Resources:
       CompatibleRuntimes:
         - python3.14
       CompatibleArchitectures:
-        - arm64
+        - x86_64
     Metadata:
       BuildMethod: makefile
 
@@ -75,7 +75,7 @@ Resources:
       CompatibleRuntimes:
         - python3.14
       CompatibleArchitectures:
-        - arm64
+        - x86_64
     Metadata:
       BuildMethod: makefile
 

@@ -20,7 +20,7 @@ export:
 		fi; \
 	done
 
-# Build para Lambda (contenedor: compila deps nativas arm64)
+# Build para Lambda (contenedor: compila deps nativas x86_64, nativo en host x86_64)
 build: export
 	sam build --use-container
 

@@ -34,7 +34,7 @@
 
 | Decisión | Elección | Motivo |
 |---|---|---|
-| Lenguaje / runtime | **Python 3.14**, arquitectura **arm64** | Menor costo, runtime más reciente |
+| Lenguaje / runtime | **Python 3.14**, arquitectura **x86_64** | Build **nativo** en host x86_64 (sin QEMU); coherencia layers/funciones. El ahorro de arm64 es marginal a este volumen (scraper 2×/día) |
 | Dependencias | **uv** (workspace, `pyproject.toml`, `uv.lock`) | Resolución rápida y reproducible |
 | IaC / deploy | **AWS SAM** (`template.yaml` + `samconfig.toml`) | Estándar del prototipo |
 | Orquestación | **Step Functions** (Standard) | `Parallel` al inicio + `Map` con timeouts largos |
@@ -67,7 +67,7 @@ aws configure                # access key, secret, region = sa-east-1
 uv tool install aws-sam-cli
 sam --version
 
-# 5. Docker  (sam build --use-container: compila deps nativas arm64/Lambda)
+# 5. Docker  (sam build --use-container: compila deps nativas x86_64/Lambda)
 sudo pacman -S docker && sudo systemctl enable --now docker
 
 # 6. Tooling de dev (declarado en pyproject como dev-deps, se usa vía uv run)
@@ -75,7 +75,7 @@ uv sync                      # instala todo el workspace + dev tools (ruff, pyte
 ```
 
 > **Por qué Docker:** `Pillow` y otras dependencias con binarios nativos deben compilarse para
-> el entorno de Lambda (Amazon Linux, arm64). `sam build --use-container` lo garantiza.
+> el entorno de Lambda (Amazon Linux, x86_64). `sam build --use-container` lo garantiza.
 
 ---
 
@@ -483,7 +483,7 @@ Ningún módulo importa `client.py`: todas las funciones reciben `db` por parám
 (`unknown_source`, ver §6.1). `rdc_database/__init__.py` reexporta la superficie pública para import plano.
 
 **Paso 1.4 — Empaquetado:** dos `LayerVersion` (`UtilsLayer`, `DatabaseLayer`), runtime
-`python3.14`, arm64. `database` declara **`pymongo==4.17.*`** (dnspython viene como dependencia
+`python3.14`, x86_64. `database` declara **`pymongo==4.17.*`** (dnspython viene como dependencia
 directa de pymongo 4.17 → SRV de Atlas sin extras). Cada Lambda adjunta las layers que necesita:
 spiders → `utils`; Lambdas que escriben en Mongo → `utils` + `database`.
 
@@ -526,7 +526,7 @@ instanciar spider → `asyncio.run(spider.run())` → subir a
 la `UtilsLayer`, no como dep de la función). Añadir el target `make export` para la función jumbo.
 
 **Paso 2.5 — `template.yaml` · Lambda del spider:** `SpiderJumboFunction`
-(`FunctionName: RDCScraper-SpiderJumboFunction`, `python3.14`, arm64, `Handler: handler.handler`,
+(`FunctionName: RDCScraper-SpiderJumboFunction`, `python3.14`, x86_64, `Handler: handler.handler`,
 `CodeUri: src/spiders/jumbo/`). `Layers: [!Ref UtilsLayer]` **solo** (no toca Mongo → sin
 `DatabaseLayer`). Env `S3_PIPELINE_BUCKET`; policy S3 `PutObject` sobre `rincon-del-curao/pipeline/*`.
 Timeout/memoria holgados (scraping I/O masivo).
@@ -638,7 +638,7 @@ sí llevan el prefijo.
 #   (un target del Makefile recorre cada miembro del workspace)
 make export            # p.ej.: uv export --package <miembro> --no-hashes -o <dir>/requirements.txt
 
-# Build (contenedor para compilar Pillow y deps nativas arm64)
+# Build (contenedor para compilar Pillow y deps nativas x86_64)
 make build             # == make export && sam build --use-container
 
 # Primer deploy (interactivo → genera samconfig.toml)
