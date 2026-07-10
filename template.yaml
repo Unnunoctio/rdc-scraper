@@ -437,6 +437,45 @@ Resources:
             ResultPath: $
             End: true
 
+  ########################################
+  # SCHEDULING — EventBridge Scheduler (Fase 6)
+  #   3 corridas/día a las 10:00 / 14:00 / 18:00 hora de Chile (America/Santiago, con DST).
+  #   El envío del reporte se gatea dentro de SendReport (solo viernes 14:00).
+  ########################################
+
+  SchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: RDCScraper-SchedulerRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StartOrchestrator
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: states:StartExecution
+                Resource: !Ref OrchestratorStateMachine
+
+  ScheduleTrigger:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: RDCScraper-ScheduleTrigger
+      Description: Dispara el pipeline a las 10:00, 14:00 y 18:00 hora de Chile.
+      ScheduleExpression: cron(0 10,14,18 * * ? *)
+      ScheduleExpressionTimezone: America/Santiago
+      FlexibleTimeWindow:
+        Mode: 'OFF'
+      Target:
+        Arn: !Ref OrchestratorStateMachine
+        RoleArn: !GetAtt SchedulerRole.Arn
+
 Outputs:
   ProductImagesBucketName:
     Description: S3 bucket for product images
