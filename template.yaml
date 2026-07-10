@@ -27,6 +27,16 @@ Parameters:
     Type: String
     Description: RDC Drinks API internal key
     NoEcho: true
+  ResendApiKey:
+    Type: String
+    Description: Resend API key (envío del reporte de unmatched)
+    NoEcho: true
+  EmailSender:
+    Type: String
+    Description: Remitente verificado en Resend
+  EmailRecipient:
+    Type: String
+    Description: Destinatario del reporte de unmatched
 
 Globals:
   Function:
@@ -219,8 +229,60 @@ Resources:
                 - !Sub 'arn:aws:s3:::${S3ImagesBucket}/pipeline/*'
 
   ########################################
+  # PIPELINE — cierre (MarkOutOfStock -> SendReport)
+  #   MarkOutOfStock: websites con lastUpdate != sync_token -> inStock:false (Utils+Database).
+  #   SendReport    : junta unmatched de S3 -> Excel -> email (Resend); sin layers.
+  ########################################
+
+  MarkOutOfStockFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: RDCScraper-PipelineMarkOutOfStockFunction
+      Description: Marca out-of-stock los websites no vistos en la corrida (lastUpdate != sync_token).
+      CodeUri: src/pipeline/mark_out_of_stock/
+      Handler: handler.handler
+      Timeout: 120
+      MemorySize: 512
+      Layers:
+        - !Ref UtilsLayer
+        - !Ref DatabaseLayer
+      Environment:
+        Variables:
+          MONGODB_URI: !Ref MongoDbUri
+          MONGODB_DB: !Ref MongoDbDatabase
+
+  SendReportFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: RDCScraper-PipelineSendReportFunction
+      Description: Junta los unmatched de S3, genera un Excel y lo envía por email (Resend).
+      CodeUri: src/pipeline/send_report/
+      Handler: handler.handler
+      Timeout: 120
+      MemorySize: 512
+      Environment:
+        Variables:
+          RESEND_API_KEY: !Ref ResendApiKey
+          EMAIL_SENDER: !Ref EmailSender
+          EMAIL_RECIPIENT: !Ref EmailRecipient
+          S3_PIPELINE_BUCKET: !Ref S3ImagesBucket
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: s3:ListBucket
+              Resource: !Sub 'arn:aws:s3:::${S3ImagesBucket}'
+              Condition:
+                StringLike:
+                  s3:prefix: 'pipeline/unmatched/*'
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:DeleteObject
+              Resource: !Sub 'arn:aws:s3:::${S3ImagesBucket}/pipeline/unmatched/*'
+
+  ########################################
   # STEP FUNCTIONS — orquestador
-  #   Fase 4: ScrapeParallel -> MergeResults -> SyncPipeline (Map).
+  #   Fase 5: ScrapeParallel -> MergeResults -> SyncPipeline -> MarkOutOfStock -> SendReport.
   ########################################
 
   OrchestratorRole:
@@ -247,6 +309,8 @@ Resources:
                   - !GetAtt FindByPathFunction.Arn
                   - !GetAtt SearchDrinksFunction.Arn
                   - !GetAtt SyncProductFunction.Arn
+                  - !GetAtt MarkOutOfStockFunction.Arn
+                  - !GetAtt SendReportFunction.Arn
 
   OrchestratorStateMachine:
     Type: AWS::Serverless::StateMachine
@@ -255,7 +319,7 @@ Resources:
       Type: STANDARD
       Role: !GetAtt OrchestratorRole.Arn
       Definition:
-        Comment: RDC Scraper orchestrator (Fase 4 — ScrapeParallel -> MergeResults -> SyncPipeline)
+        Comment: RDC Scraper orchestrator (Fase 5 — ScrapeParallel -> MergeResults -> SyncPipeline -> MarkOutOfStock -> SendReport)
         StartAt: ScrapeParallel
         States:
           ScrapeParallel:
@@ -347,6 +411,30 @@ Resources:
                     unmatched_count.$: $.Payload.unmatched_count
                     unmatched_key.$: $.Payload.unmatched_key
                   End: true
+            Next: MarkOutOfStock
+          MarkOutOfStock:
+            Type: Task
+            Resource: arn:aws:states:::lambda:invoke
+            Parameters:
+              FunctionName: !Ref MarkOutOfStockFunction
+              Payload:
+                sync_token.$: $$.Execution.StartTime
+            ResultSelector:
+              marked_out_of_stock.$: $.Payload.marked_out_of_stock
+            ResultPath: $
+            Next: SendReport
+          SendReport:
+            Type: Task
+            Resource: arn:aws:states:::lambda:invoke
+            Parameters:
+              FunctionName: !Ref SendReportFunction
+              Payload:
+                execution_id.$: $$.Execution.Name
+                start_time.$: $$.Execution.StartTime
+            ResultSelector:
+              sent.$: $.Payload.sent
+              count.$: $.Payload.count
+            ResultPath: $
             End: true
 
 Outputs:
@@ -374,6 +462,12 @@ Outputs:
   SyncProductFunctionArn:
     Description: SyncProduct pipeline Lambda ARN
     Value: !GetAtt SyncProductFunction.Arn
+  MarkOutOfStockFunctionArn:
+    Description: MarkOutOfStock pipeline Lambda ARN
+    Value: !GetAtt MarkOutOfStockFunction.Arn
+  SendReportFunctionArn:
+    Description: SendReport pipeline Lambda ARN
+    Value: !GetAtt SendReportFunction.Arn
   OrchestratorArn:
     Description: Step Functions orchestrator ARN
     Value: !Ref OrchestratorStateMachine

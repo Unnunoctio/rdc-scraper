@@ -6,6 +6,7 @@ requires-python = ">=3.14"
 dependencies = [
     "openpyxl>=3.1",
     "resend>=2.0",
+    "tzdata>=2025.1",
 ]
 
 [tool.uv]
