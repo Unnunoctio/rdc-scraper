@@ -586,12 +586,36 @@ deploy E2E: ejecución `SUCCEEDED`, **1741 productos únicos → 11 batches**
 > sin QEMU. Deploy en background requiere `confirm_changeset = false` en `samconfig.toml`.
 
 ### Fase 4 — Seed de `infos` + SyncPipeline (Map: FindByPath → SearchDrinks → SyncProduct)
-- `seed/infos.json` + `scripts/seed_infos.py`: sembrar tiendas en Mongo (upsert idempotente por `code`). Es el **allowlist** de `source` válidos (ver §6.1).
-- `rdc_database/infos.py`: mapa `{code → _id}`; **si `source` no está sembrado, bloquea la escritura** y enruta el producto a `unmatched` (`unknown_source`).
-- `find_by_path`: match por `websites.path`, `update_price_if_changed`, upsert `priceLogs` (solo si el `source` tiene `info`).
-- `search_drinks` + `drinks_client`: filtra por campos requeridos, consulta Drinks API, `_best_match` por subconjunto de palabras.
-- `sync_product` + `image_uploader`: gate de `info_id` → `add_website` o `create_product`; SKU único **antes** de subir imagen (evita huérfanos en S3); descarga → WebP (Pillow) → S3.
-- State machine: `MergeResults → SyncPipeline(Map, maxConcurrency 10)`.
+**Estado: hecha — desplegada y validada E2E (2026-07-09).** Subpasos:
+
+1. **Seed `infos` (allowlist).** `scripts/seed_infos.py` (`make seed`): upsert idempotente por `code`,
+   valida `code/name/logo/url`. `seed/infos.json` sembrado con Jumbo. Es el **allowlist** de `source`
+   válidos (§6.1); una tienda no sembrada no existe para el pipeline.
+2. **Gate `unknown_source`.** Decisión: **chequeo previo en el handler** (la layer `database` queda
+   intacta; ya traía toda la escritura desde Fase 1). En `find_by_path` los `source` no sembrados se
+   **descartan y loguean** (no van a `remaining` ni a etapas siguientes); en `sync_product` un guard
+   defensivo los enruta a `unmatched`.
+3. **FindByPath** (`find_by_path/handler.py`, Utils+Database): carga el batch de S3 (y lo borra),
+   `find_one({"websites.path": url})`, `update_price_if_changed` (+upsert del priceLog del día),
+   devuelve `{remaining, sync_token, category}`.
+4. **SearchDrinks** (`search_drinks/{handler,drinks_client}.py`, solo Utils): filtra `REQUIRED_FIELDS`,
+   consulta la Drinks API, `_best_match` por subconjunto de palabras. `drinks_client` tiene sus PROPIOS
+   `CATEGORY_MAP`/`PACKAGING_MAP` (ES→slug/inglés de la API), distintos de los de la layer utils.
+5. **SyncProduct** (`sync_product/{handler,image_uploader}.py`, Utils+Database+Pillow): `find_one` por
+   variante de drink → `add_website` | `create_product`; SKU único **antes** de la imagen (evita
+   huérfanos en S3); descarga → WebP → S3 `images/{category}/{sku}/`.
+   - **`unmatched` NO se devuelve inline** (superaría el límite de **256 KB de I/O de Step Functions**
+     al agregar el resultado del Map): se escribe a S3 (`pipeline/unmatched/<exec>/<aws_request_id>.json`)
+     y se devuelve solo `{unmatched_count, unmatched_key}`. La clave usa `context.aws_request_id` (único
+     por invocación) — `$$.Map.Item.Index` NO existe dentro de los estados del ItemProcessor (solo en el
+     `ItemSelector`) y varios batches de una misma categoría corren en paralelo (con la categoría como
+     clave se pisarían). SendReport (Fase 5) los recolecta por glob del prefijo.
+6. **State machine:** `MergeResults → SyncPipeline (Map INLINE, maxConcurrency 10)`; `ItemSelector`
+   inyecta `sync_token = $$.Execution.StartTime`; cadena interna FindByPath→SearchDrinks→SyncProduct.
+   Params SAM nuevos: `MongoDbUri`/`DrinksApiKey` (NoEcho), `MongoDbDatabase`, `DrinksApiUrl`.
+7. **Verificación:** ruff + pytest (`test_search_drinks`, `test_sync_product`) + `sam validate --lint` +
+   smoke import-wiring; E2E en AWS validó las 4 rutas (create_product +imagen, add_website,
+   update_price +priceLog, unmatched→S3) e idempotencia. Casos aún no ejercidos → **§10.1**.
 
 ### Fase 5 — MarkOutOfStock + SendReport
 - `mark_out_of_stock`: `update_many` con `array_filters` sobre `lastUpdate ≠ sync_token`.
@@ -709,6 +733,30 @@ uv run ruff check . && uv run ruff format --check .
 
 Priorizar tests de lógica pura (sin red): extractores de abv/volumen/cantidad/packaging,
 `path_resolver`, `generate_product_name/slug`, `_best_match`.
+
+### 10.1 Tests E2E pendientes (suite de aceptación — correr al cierre de todas las fases)
+
+Casos aún **no ejercidos** en E2E (algunos requieren condiciones que hoy no existen, p.ej. un 2º
+spider). Correr como aceptación final antes de dar el pipeline por cerrado:
+
+1. **Gate `unknown_source` (bloqueo) — Fase 4, prioridad alta.** Con un `source` no sembrado en
+   `infos`: **0 escrituras** en `products`/`priceLogs` (ni un `websites.info` nulo) y el producto cae a
+   `unmatched`/descarte. Probar quitando temporalmente la tienda del seed y reejecutando; re-`seed`
+   para restaurar. *(Hoy solo hay `jumbo` sembrado y un solo spider `jumbo` → el bloqueo nunca se dispara.)*
+2. **Precio sin cambio — Fase 4.** `update_price_if_changed` cuando scrapeado == guardado: refresca
+   `lastUpdate`/`inStock` pero **no** reescribe precio ni duplica el priceLog del día. *(Ocurre
+   implícitamente en cada re-run, falta aserción explícita.)*
+3. **Reactivación `inStock` — Fase 4/5.** Un website `inStock:false` que reaparece vuelve a `true`
+   (ligado a MarkOutOfStock; testear junto con Fase 5).
+4. **`DuplicateKeyError` → `unmatched` — Fase 4, §6.3.** Colisión de índice único
+   (variant/sku/slug/path) bajo `maxConcurrency 10` se atrapa y enruta a `error`/`unmatched`.
+5. **Imagen fallida — Fase 4.** Descarga no-200 / imagen corrupta → `upload_image` devuelve `None` →
+   producto creado con `images: []` (sin tumbar el sync).
+6. **Multi-tienda (dedup cross-store) — requiere un 2º spider.** Dos tiendas scrapeando el mismo drink
+   se **adjuntan al MISMO producto** (`add_website`), sin duplicar variante.
+
+> Ya validados E2E en Fase 4 (no repetir salvo regresión): create_product (+imagen+website+priceLog),
+> add_website (producto existe, website no), update_price_if_changed (+priceLog), unmatched→S3, idempotencia.
 
 ---
 
