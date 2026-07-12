@@ -9,7 +9,7 @@ from rdc_utils.mappings import PACKAGING_MAP_ES, SPIRIT_TYPE_MAP_ES
 
 
 def generate_sku() -> str:
-    return "".join(random.choices(string.ascii_uppercase + string.digits, k=8))
+    return "".join(random.choices(string.digits, k=8))
 
 
 def _format_volume(volume_ml: int) -> str:
