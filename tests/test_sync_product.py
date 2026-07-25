@@ -15,7 +15,7 @@ from unittest.mock import MagicMock
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
-_PATH = ROOT / "src" / "pipeline" / "sync_product" / "image_uploader.py"
+_PATH = ROOT / "src" / "pipeline" / "sync_batch" / "image_uploader.py"
 
 os.environ.setdefault("S3_IMAGES_BUCKET", "test-bucket")
 

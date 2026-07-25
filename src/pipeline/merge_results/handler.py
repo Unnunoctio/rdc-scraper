@@ -4,7 +4,7 @@ from collections import defaultdict
 
 import boto3
 
-BATCH_SIZE = 250
+BATCH_SIZE = 500
 
 _s3 = boto3.client("s3")
 _bucket = os.environ.get("S3_PIPELINE_BUCKET", "")

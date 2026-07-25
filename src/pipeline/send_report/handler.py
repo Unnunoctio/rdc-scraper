@@ -1,6 +1,6 @@
 """SendReport — última etapa del pipeline.
 
-Recolecta todos los `unmatched` que SyncProduct escribió en S3 durante la corrida
+Recolecta todos los `unmatched` que SyncBatch escribió en S3 durante la corrida
 (`pipeline/unmatched/<execution_id>/*.json` — NO viajan inline por el límite de 256 KB de I/O de
 Step Functions, ver §7 Fase 4.5), y —solo en la corrida designada— genera un Excel POR CATEGORÍA
 (ordenado por marca y nombre) y los envía por email (Resend) para revisión/carga manual.

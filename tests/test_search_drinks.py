@@ -1,8 +1,8 @@
-"""Tests de las funciones puras de SearchDrinks (_best_match) y del cliente Drinks (mapeos).
+"""Tests de las funciones puras de la fase SearchDrinks (_best_match) y del cliente Drinks (mapeos).
 
-El handler hace imports planos (`import drinks_client`) como en Lambda, y drinks_client lee
-DRINKS_API_URL en import. Se setean las env y se agrega la carpeta de la función a sys.path
-antes de cargar el módulo por ruta explícita (evita colisión con otros `handler.py`).
+Los módulos hacen imports planos (`import drinks_client`) como en Lambda, y drinks_client lee
+DRINKS_API_URL en import. Se setean las env y se agrega la carpeta del Lambda unificado (sync_batch)
+a sys.path antes de cargar el módulo por ruta explícita (evita colisión con otros `handler.py`).
 """
 
 import importlib.util
@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-_DIR = ROOT / "src" / "pipeline" / "search_drinks"
+_DIR = ROOT / "src" / "pipeline" / "sync_batch"
 
 os.environ.setdefault("DRINKS_API_URL", "https://drinks.example.com/api/")
 os.environ.setdefault("DRINKS_API_KEY", "test-key")
@@ -19,13 +19,13 @@ sys.path.insert(0, str(_DIR))
 
 
 def _load(name: str):
-    spec = importlib.util.spec_from_file_location(f"search_drinks_{name}", _DIR / f"{name}.py")
+    spec = importlib.util.spec_from_file_location(f"sync_batch_{name}", _DIR / f"{name}.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
 
 
-handler = _load("handler")
+search = _load("search_drinks")
 drinks_client = _load("drinks_client")
 
 
@@ -38,22 +38,22 @@ def test_best_match_picks_most_specific_subset():
         {"name": "Corona Extra"},
         {"name": "Heineken"},
     ]
-    match = handler._best_match("Cerveza Corona Extra Lata 355ml", drinks)
+    match = search._best_match("Cerveza Corona Extra Lata 355ml", drinks)
     assert match == {"name": "Corona Extra"}
 
 
 def test_best_match_none_when_no_subset():
     drinks = [{"name": "Heineken"}, {"name": "Budweiser"}]
-    assert handler._best_match("Cerveza Corona Extra", drinks) is None
+    assert search._best_match("Cerveza Corona Extra", drinks) is None
 
 
 def test_best_match_case_and_order_insensitive():
     drinks = [{"name": "Extra Corona"}]
-    assert handler._best_match("corona EXTRA botella", drinks) == {"name": "Extra Corona"}
+    assert search._best_match("corona EXTRA botella", drinks) == {"name": "Extra Corona"}
 
 
 def test_best_match_empty_drinks():
-    assert handler._best_match("Corona", []) is None
+    assert search._best_match("Corona", []) is None
 
 
 # ============= drinks_client mapeos =============

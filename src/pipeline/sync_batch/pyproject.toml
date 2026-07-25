@@ -1,7 +1,7 @@
 [project]
-name = "rdc-pipeline-sync-product"
+name = "rdc-pipeline-sync-batch"
 version = "0.1.0"
-description = "SyncProduct pipeline Lambda"
+description = "SyncBatch pipeline Lambda (FindByPath + SearchDrinks + SyncProduct unificados)"
 requires-python = ">=3.14"
 dependencies = [
     "aiohttp>=3.13",

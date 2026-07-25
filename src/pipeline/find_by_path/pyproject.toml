@@ -1,9 +1,0 @@
-[project]
-name = "rdc-pipeline-find-by-path"
-version = "0.1.0"
-description = "FindByPath pipeline Lambda"
-requires-python = ">=3.14"
-dependencies = []
-
-[tool.uv]
-package = false
