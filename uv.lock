@@ -5,12 +5,10 @@ requires-python = ">=3.14"
 [manifest]
 members = [
     "rdc-database",
-    "rdc-pipeline-find-by-path",
     "rdc-pipeline-mark-out-of-stock",
     "rdc-pipeline-merge-results",
-    "rdc-pipeline-search-drinks",
     "rdc-pipeline-send-report",
-    "rdc-pipeline-sync-product",
+    "rdc-pipeline-sync-batch",
     "rdc-scraper",
     "rdc-spider-jumbo",
     "rdc-utils",
@@ -483,11 +481,6 @@ dependencies = [
 requires-dist = [{ name = "pymongo", specifier = "==4.17.*" }]
 
 [[package]]
-name = "rdc-pipeline-find-by-path"
-version = "0.1.0"
-source = { virtual = "src/pipeline/find_by_path" }
-
-[[package]]
 name = "rdc-pipeline-mark-out-of-stock"
 version = "0.1.0"
 source = { virtual = "src/pipeline/mark_out_of_stock" }
@@ -496,17 +489,6 @@ source = { virtual = "src/pipeline/mark_out_of_stock" }
 name = "rdc-pipeline-merge-results"
 version = "0.1.0"
 source = { virtual = "src/pipeline/merge_results" }
-
-[[package]]
-name = "rdc-pipeline-search-drinks"
-version = "0.1.0"
-source = { virtual = "src/pipeline/search_drinks" }
-dependencies = [
-    { name = "aiohttp" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "aiohttp", specifier = ">=3.13" }]
 
 [[package]]
 name = "rdc-pipeline-send-report"
@@ -526,9 +508,9 @@ requires-dist = [
 ]
 
 [[package]]
-name = "rdc-pipeline-sync-product"
+name = "rdc-pipeline-sync-batch"
 version = "0.1.0"
-source = { virtual = "src/pipeline/sync_product" }
+source = { virtual = "src/pipeline/sync_batch" }
 dependencies = [
     { name = "aiohttp" },
     { name = "pillow" },

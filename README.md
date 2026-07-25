@@ -30,12 +30,11 @@ flowchart TB
         jumbo["Spider Jumbo<br/>PLP → PDP → S3"]
     end
 
-    SP --> MR["MergeResults<br/>dedup + batches de 250"]
+    SP --> MR["MergeResults<br/>dedup + batches de 500"]
     MR --> MAP
 
     subgraph MAP["SyncPipeline · Map (concurrencia 10)"]
-        direction LR
-        FBP["FindByPath"] --> SD["SearchDrinks"] --> SPr["SyncProduct"]
+        SB["SyncBatch<br/>FindByPath → SearchDrinks → SyncProduct"]
     end
 
     MAP --> MOOS["MarkOutOfStock"]
@@ -46,9 +45,8 @@ flowchart TB
 
     jumbo -.-> s3
     MR -.-> s3
-    FBP -.-> mongo
-    SPr -.-> mongo
-    SPr -.-> s3
+    SB -.-> mongo
+    SB -.-> s3
     MOOS -.-> mongo
     RPT -.-> s3
 ```
@@ -56,8 +54,10 @@ flowchart TB
 1. **ScrapeParallel** — lanza todos los spiders en paralelo (una rama por spider). Cada spider
    scrapea PLP → PDP y sube su run JSON a `s3://rincon-del-curao/pipeline/`.
 2. **MergeResults** — carga los runs, deduplica por URL, agrupa por categoría y escribe *batches*
-   de 250 productos en S3.
-3. **SyncPipeline** (`Map`, concurrencia 10) — por cada batch:
+   de 500 productos en S3.
+3. **SyncPipeline** (`Map`, concurrencia 10) — por cada batch, **SyncBatch** corre las tres fases en
+   una sola invocación (comparte conexión a Mongo, cache de `infos` y sesión HTTP; 1 *state
+   transition* por batch en vez de 3):
    - **FindByPath** — match por `websites.path`; actualiza precio/stock; enruta el resto.
    - **SearchDrinks** — busca los remaining en la RDC Drinks API y elige el mejor match por nombre.
    - **SyncProduct** — `add_website` o `create_product` (+ imagen WebP a S3); *gate* de allowlist por tienda.
@@ -77,6 +77,32 @@ Los spiders son independientes (config propia en código, sin `BaseSpider`). Lo 
 
 - **`ScrapedProduct`** — estructura de salida común (`rdc_utils.standard_format`).
 - **Fetchers** — lógica de fetch JSON / HTML / Proxy compartida (`rdc_utils.fetchers`).
+
+### SyncBatch — flujo interno de datos
+
+Vista de **una invocación** de `SyncBatch` (un batch). Las tres fases corren en un único event
+loop, compartiendo conexión a Mongo, cache de `infos` y sesión HTTP. Los `unmatched` se persisten a
+S3 y solo se devuelve un puntero (evita el límite de 256 KB de I/O del `Map`).
+
+```mermaid
+flowchart TB
+    s3in[("S3 · batch ≤500")]
+    s3in -->|"load_batch · GET + DELETE (síncrono)"| SP["lista de ScrapedProduct"]
+
+    SP --> F1["Fase 1 · FindByPath<br/>(Mongo)"]
+    F1 -.->|"efecto en DB"| UPD(["updated · precio"])
+    F1 -->|"remaining"| F2["Fase 2 · SearchDrinks<br/>(Drinks API)"]
+
+    F2 -->|"matched"| F3["Fase 3 · SyncProduct<br/>(Mongo + S3)"]
+    F3 -.->|"efecto en DB + imágenes"| ADD(["added · created"])
+
+    F2 -->|"faltan campos"| UM["unmatched"]
+    F2 -->|"sin match"| UM
+    F3 -->|"failed · errores"| UM
+
+    UM -->|"PutObject (síncrono, fuera del loop)"| s3out[("S3 · pipeline/unmatched/{exec}/{req}.json")]
+    s3out --> RET(["return { sync_token, category,<br/>unmatched_count, unmatched_key }"])
+```
 
 ---
 
@@ -104,9 +130,7 @@ rdc-scraper/
     │   └── jumbo/             # handler + spider + config
     └── pipeline/              # 1 Lambda por etapa del pipeline
         ├── merge_results/
-        ├── find_by_path/
-        ├── search_drinks/
-        ├── sync_product/
+        ├── sync_batch/          # FindByPath + SearchDrinks + SyncProduct unificados (1 estado del Map)
         ├── mark_out_of_stock/
         └── send_report/
 ```
@@ -216,7 +240,7 @@ make test        # o: uv run pytest
 ```
 
 Cubren los extractores del spider Jumbo y la lógica pura de las Lambdas del pipeline
-(`merge_results`, `search_drinks`, `sync_product`, `send_report`). Los tests E2E contra AWS
+(`merge_results`, `sync_batch`, `send_report`). Los tests E2E contra AWS
 están diferidos (ver `PLAN.md §10.1`).
 
 ---

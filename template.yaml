@@ -164,21 +164,24 @@ Resources:
               Resource: !Sub 'arn:aws:s3:::${S3ImagesBucket}/pipeline/*'
 
   ########################################
-  # PIPELINE — SyncPipeline (Map: FindByPath -> SearchDrinks -> SyncProduct)
-  #   FindByPath  : match por websites.path, actualiza precio (Utils+Database).
-  #   SearchDrinks: consulta la Drinks API los remaining (Utils, aiohttp).
-  #   SyncProduct : add_website | create_product + imagen WebP a S3 (Utils+Database).
+  # PIPELINE — SyncBatch (un estado del Map; un batch por invocación)
+  #   Fusiona las tres antiguas etapas (FindByPath -> SearchDrinks -> SyncProduct) en una sola
+  #   invocación para recortar state transitions de Step Functions (3 por batch -> 1). Comparte
+  #   entre fases la conexión a Mongo, el cache de `infos` y una aiohttp.ClientSession.
+  #     - FindByPath  : match por websites.path, actualiza precio (Utils+Database).
+  #     - SearchDrinks: consulta la Drinks API los remaining (aiohttp).
+  #     - SyncProduct : add_website | create_product + imagen WebP a S3 (Utils+Database).
   ########################################
 
-  FindByPathFunction:
+  SyncBatchFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: RDCScraper-PipelineFindByPathFunction
-      Description: Match por websites.path; actualiza precio/inStock; enruta el resto a SearchDrinks.
-      CodeUri: src/pipeline/find_by_path/
+      FunctionName: RDCScraper-PipelineSyncBatchFunction
+      Description: Sync unificado de un batch (FindByPath + SearchDrinks + SyncProduct en una invocación).
+      CodeUri: src/pipeline/sync_batch/
       Handler: handler.handler
       Timeout: 300
-      MemorySize: 512
+      MemorySize: 1024
       Layers:
         - !Ref UtilsLayer
         - !Ref DatabaseLayer
@@ -186,6 +189,9 @@ Resources:
         Variables:
           MONGODB_URI: !Ref MongoDbUri
           MONGODB_DB: !Ref MongoDbDatabase
+          DRINKS_API_URL: !Ref DrinksApiUrl
+          DRINKS_API_KEY: !Ref DrinksApiKey
+          S3_IMAGES_BUCKET: !Ref S3ImagesBucket
           S3_PIPELINE_BUCKET: !Ref S3ImagesBucket
       Policies:
         - Statement:
@@ -194,43 +200,6 @@ Resources:
                 - s3:GetObject
                 - s3:DeleteObject
               Resource: !Sub 'arn:aws:s3:::${S3ImagesBucket}/pipeline/*'
-
-  SearchDrinksFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: RDCScraper-PipelineSearchDrinksFunction
-      Description: Busca los remaining en la RDC Drinks API y elige el mejor match por nombre.
-      CodeUri: src/pipeline/search_drinks/
-      Handler: handler.handler
-      Timeout: 120
-      MemorySize: 512
-      Layers:
-        - !Ref UtilsLayer
-      Environment:
-        Variables:
-          DRINKS_API_URL: !Ref DrinksApiUrl
-          DRINKS_API_KEY: !Ref DrinksApiKey
-
-  SyncProductFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: RDCScraper-PipelineSyncProductFunction
-      Description: add_website o create_product (+imagen WebP a S3); gate de allowlist por info.
-      CodeUri: src/pipeline/sync_product/
-      Handler: handler.handler
-      Timeout: 300
-      MemorySize: 512
-      Layers:
-        - !Ref UtilsLayer
-        - !Ref DatabaseLayer
-      Environment:
-        Variables:
-          MONGODB_URI: !Ref MongoDbUri
-          MONGODB_DB: !Ref MongoDbDatabase
-          S3_IMAGES_BUCKET: !Ref S3ImagesBucket
-          S3_PIPELINE_BUCKET: !Ref S3ImagesBucket
-      Policies:
-        - Statement:
             - Effect: Allow
               Action: s3:PutObject
               Resource:
@@ -315,9 +284,7 @@ Resources:
                 Resource:
                   - !GetAtt SpiderJumboFunction.Arn
                   - !GetAtt MergeResultsFunction.Arn
-                  - !GetAtt FindByPathFunction.Arn
-                  - !GetAtt SearchDrinksFunction.Arn
-                  - !GetAtt SyncProductFunction.Arn
+                  - !GetAtt SyncBatchFunction.Arn
                   - !GetAtt MarkOutOfStockFunction.Arn
                   - !GetAtt SendReportFunction.Arn
 
@@ -372,47 +339,17 @@ Resources:
             ItemProcessor:
               ProcessorConfig:
                 Mode: INLINE
-              StartAt: FindByPath
+              StartAt: SyncBatch
               States:
-                FindByPath:
+                SyncBatch:
                   Type: Task
                   Resource: arn:aws:states:::lambda:invoke
                   Parameters:
-                    FunctionName: !Ref FindByPathFunction
+                    FunctionName: !Ref SyncBatchFunction
                     Payload:
                       s3_key.$: $.s3_key
                       category.$: $.category
                       sync_token.$: $.sync_token
-                  ResultSelector:
-                    remaining.$: $.Payload.remaining
-                    sync_token.$: $.Payload.sync_token
-                    category.$: $.Payload.category
-                  Next: SearchDrinks
-                SearchDrinks:
-                  Type: Task
-                  Resource: arn:aws:states:::lambda:invoke
-                  Parameters:
-                    FunctionName: !Ref SearchDrinksFunction
-                    Payload:
-                      remaining.$: $.remaining
-                      sync_token.$: $.sync_token
-                      category.$: $.category
-                  ResultSelector:
-                    matched.$: $.Payload.matched
-                    unmatched.$: $.Payload.unmatched
-                    sync_token.$: $.Payload.sync_token
-                    category.$: $.Payload.category
-                  Next: SyncProduct
-                SyncProduct:
-                  Type: Task
-                  Resource: arn:aws:states:::lambda:invoke
-                  Parameters:
-                    FunctionName: !Ref SyncProductFunction
-                    Payload:
-                      matched.$: $.matched
-                      unmatched.$: $.unmatched
-                      sync_token.$: $.sync_token
-                      category.$: $.category
                       execution_id.$: $$.Execution.Name
                   ResultSelector:
                     sync_token.$: $.Payload.sync_token
@@ -501,15 +438,9 @@ Outputs:
   MergeResultsFunctionArn:
     Description: MergeResults pipeline Lambda ARN
     Value: !GetAtt MergeResultsFunction.Arn
-  FindByPathFunctionArn:
-    Description: FindByPath pipeline Lambda ARN
-    Value: !GetAtt FindByPathFunction.Arn
-  SearchDrinksFunctionArn:
-    Description: SearchDrinks pipeline Lambda ARN
-    Value: !GetAtt SearchDrinksFunction.Arn
-  SyncProductFunctionArn:
-    Description: SyncProduct pipeline Lambda ARN
-    Value: !GetAtt SyncProductFunction.Arn
+  SyncBatchFunctionArn:
+    Description: SyncBatch pipeline Lambda ARN (FindByPath + SearchDrinks + SyncProduct unificados)
+    Value: !GetAtt SyncBatchFunction.Arn
   MarkOutOfStockFunctionArn:
     Description: MarkOutOfStock pipeline Lambda ARN
     Value: !GetAtt MarkOutOfStockFunction.Arn
